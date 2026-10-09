@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elemental-convergence"
+version = "0.1.0"
+description = "A gesture-controlled elemental campaign built with OpenCV and Pygame"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+  "cvzone>=1.6,<3",
+  "mediapipe>=0.10,<0.11",
+  "numpy>=1.26,<3",
+  "opencv-python>=4.8,<5",
+  "pygame>=2.5,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pyinstaller>=6,<7"]
+
+[project.scripts]
+elemental-convergence = "elemental_convergence.app:main"
+
+[tool.setuptools.package-data]
+elemental_convergence = ["data/*.json", "assets/**/*"]
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+testpaths = ["tests"]
+filterwarnings = ["ignore:pkg_resources is deprecated as an API:DeprecationWarning"]
