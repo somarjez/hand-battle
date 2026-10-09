@@ -1,0 +1,73 @@
+[
+  {
+    "id": "stonewake",
+    "title": "Stonewake Sanctuary",
+    "unlock": "earth",
+    "intro": ["The Stone Seal answers a steady hand.", "Stand your ground and awaken the first element."],
+    "outro": ["Stone remembers your resolve. The drowned ruins now call."],
+    "waves": [
+      {"objective": "defeat_all", "enemies": {"shooter": 3}},
+      {"objective": "defeat_all", "enemies": {"shooter": 3, "charger": 2}},
+      {"objective": "survive", "duration_seconds": 30, "enemies": {"shooter": 2, "charger": 3}}
+    ],
+    "boss": "stone_guardian",
+    "next_level": "tidelost"
+  },
+  {
+    "id": "tidelost",
+    "title": "Tidelost Ruins",
+    "unlock": "water",
+    "intro": ["The Tide Seal lies beneath a sky of falling embers.", "Flow around danger; turn every attack aside."],
+    "outro": ["The ruins breathe again. A path opens above the clouds."],
+    "waves": [
+      {"objective": "defeat_all", "enemies": {"shooter": 2, "sniper": 2}},
+      {"objective": "defeat_all", "enemies": {"bomber": 3, "shooter": 2}},
+      {"objective": "survive", "duration_seconds": 35, "enemies": {"sniper": 2, "bomber": 3}}
+    ],
+    "boss": "tide_guardian",
+    "next_level": "skyglass"
+  },
+  {
+    "id": "skyglass",
+    "title": "Skyglass Spires",
+    "unlock": "air",
+    "intro": ["The Gale Seal waits where broken towers touch the wind.", "Move lightly; find the opening in every pattern."],
+    "outro": ["The storm clears. Far below, the Cinderforge burns."],
+    "waves": [
+      {"objective": "defeat_all", "enemies": {"gunner": 2, "shooter": 3}},
+      {"objective": "defeat_all", "enemies": {"caster": 3, "gunner": 2}},
+      {"objective": "survive", "duration_seconds": 40, "enemies": {"caster": 3, "gunner": 3}}
+    ],
+    "boss": "gale_guardian",
+    "next_level": "cinderforge"
+  },
+  {
+    "id": "cinderforge",
+    "title": "Cinderforge",
+    "unlock": "fire",
+    "intro": ["The Ember Seal is chained to the forge-heart.", "Strike with purpose before the dark can blink away."],
+    "outro": ["Four seals burn as one. The Eclipse Citadel is exposed."],
+    "waves": [
+      {"objective": "defeat_all", "enemies": {"spinner": 3, "sweeper": 2}},
+      {"objective": "defeat_all", "enemies": {"blinker": 3, "spinner": 2}},
+      {"objective": "survive", "duration_seconds": 45, "enemies": {"spinner": 2, "sweeper": 2, "blinker": 2}}
+    ],
+    "boss": "ember_guardian",
+    "next_level": "eclipse"
+  },
+  {
+    "id": "eclipse",
+    "title": "Eclipse Citadel",
+    "unlock": "lightning",
+    "intro": ["Every restored seal points to the same wound in the world.", "Master Lightning. Enter Convergence. End the Rift."],
+    "outro": ["The seals are whole. Dawn reaches every corner of the realm.", "The Warden's journey is complete."],
+    "waves": [
+      {"objective": "defeat_all", "enemies": {"charger": 2, "sniper": 2, "caster": 2}},
+      {"objective": "defeat_all", "enemies": {"gunner": 2, "spinner": 2, "blinker": 2}},
+      {"objective": "survive", "duration_seconds": 50, "enemies": {"bomber": 2, "sweeper": 2, "caster": 2}}
+    ],
+    "boss": "rift_sovereign",
+    "next_level": null
+  }
+]
+
