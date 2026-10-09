@@ -44,4 +44,3 @@ def test_settings_round_trip_preserves_accessibility_options(tmp_path: Path):
     repository.save(expected)
 
     assert repository.load() == expected
-
