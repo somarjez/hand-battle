@@ -25,7 +25,7 @@ The project has been extended to include hand gesture recognition functionality.
     ```
 3. Run the Python script:
     ```bash
-    python hand_tracking.py
+    python handTrack.py
     ```
 
 ## Gesture Recognition
