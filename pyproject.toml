@@ -27,4 +27,5 @@ elemental_convergence = ["data/*.json", "assets/**/*"]
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
 testpaths = ["tests"]
+filterwarnings = ["ignore:pkg_resources is deprecated as an API:DeprecationWarning"]
 
