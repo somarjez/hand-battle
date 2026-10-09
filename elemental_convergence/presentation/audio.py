@@ -87,4 +87,3 @@ class AudioManager:
                 self._music.play(-1)
         except Exception:
             return
-
