@@ -36,6 +36,8 @@ class GameRenderer:
         cached = self._backgrounds.get(name)
         if name not in self._backgrounds:
             path = self.asset_root / "images" / f"{name}.png"
+            if not path.exists():
+                path = self.asset_root / "images" / "menu.png"
             try:
                 cached = pygame.image.load(path).convert()
             except (FileNotFoundError, pygame.error):

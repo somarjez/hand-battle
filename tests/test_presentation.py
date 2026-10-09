@@ -4,18 +4,28 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import pygame
+import numpy as np
 
 from elemental_convergence.app import camera_to_surface
 from elemental_convergence.content import load_levels
 from elemental_convergence.models import Difficulty
 from elemental_convergence.persistence import SaveData, Settings
 from elemental_convergence.presentation.renderer import GameRenderer
+from elemental_convergence.presentation.audio import synthesize_tone
 from elemental_convergence.presentation.scenes import AppModel, SceneId
 from elemental_convergence.session import GameSession
 
 
 def test_camera_frame_adapter_accepts_no_frame():
     assert camera_to_surface(None) is None
+
+
+def test_procedural_audio_fallback_is_stereo_and_audible():
+    samples = synthesize_tone((220.0, 330.0), duration=0.1, sample_rate=1000)
+
+    assert samples.shape == (100, 2)
+    assert samples.dtype == np.int16
+    assert np.max(np.abs(samples)) > 0
 
 
 def test_first_new_game_routes_through_calibration_then_story():
