@@ -64,4 +64,3 @@ def test_vision_service_reports_recoverable_camera_start_failure():
     assert service.start(4) is False
     assert service.latest().camera_ok is False
     service.stop()
-

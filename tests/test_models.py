@@ -10,4 +10,3 @@ def test_story_mode_is_more_forgiving_than_master_mode():
     assert story.attack_interval > master.attack_interval
     assert story.hand_grace_seconds > master.hand_grace_seconds
     assert story.aim_assist > master.aim_assist
-

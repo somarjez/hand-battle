@@ -45,4 +45,3 @@ def test_level_loader_rejects_unknown_objective(tmp_path: Path):
 
     with pytest.raises(ContentError, match="objective"):
         load_levels(source)
-

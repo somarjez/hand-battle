@@ -100,4 +100,3 @@ class SettingsRepository(_JsonRepository[Settings]):
 def user_data_dir() -> Path:
     base = os.environ.get("LOCALAPPDATA")
     return Path(base) / "ElementalConvergence" if base else Path.home() / ".elemental-convergence"
-

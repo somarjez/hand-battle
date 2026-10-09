@@ -50,4 +50,3 @@ class GestureFrame:
     timestamp: float
     hands: tuple[HandPose, ...] = ()
     camera_ok: bool = True
-

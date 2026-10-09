@@ -270,4 +270,3 @@ def find_cameras(max_index: int = 6) -> list[int]:
                 found.append(camera_id)
         camera.release()
     return found
-

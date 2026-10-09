@@ -8,7 +8,7 @@ import numpy as np
 
 from elemental_convergence.app import camera_to_surface
 from elemental_convergence.content import load_levels
-from elemental_convergence.models import Difficulty
+from elemental_convergence.models import Difficulty, Element, GestureFrame
 from elemental_convergence.persistence import SaveData, Settings
 from elemental_convergence.presentation.renderer import GameRenderer
 from elemental_convergence.presentation.audio import synthesize_tone
@@ -39,6 +39,16 @@ def test_first_new_game_routes_through_calibration_then_story():
     assert model.current_level_id == "stonewake"
 
 
+def test_failed_saved_camera_forces_recalibration_on_next_game():
+    model = AppModel(load_levels(), SaveData(), Settings(camera_id=5))
+
+    model.camera_unavailable()
+    model.new_game()
+
+    assert model.settings.camera_id is None
+    assert model.scene is SceneId.CALIBRATION
+
+
 def test_returning_player_can_continue_at_first_incomplete_level():
     save = SaveData(
         unlocked_levels=("stonewake", "tidelost", "skyglass"),
@@ -52,6 +62,14 @@ def test_returning_player_can_continue_at_first_incomplete_level():
     assert model.current_level_id == "skyglass"
 
 
+def test_fresh_player_cannot_bypass_calibration_with_continue():
+    model = AppModel(load_levels(), SaveData(), Settings(camera_id=None))
+
+    model.continue_game()
+
+    assert model.scene is SceneId.CALIBRATION
+
+
 def test_pause_returns_to_the_same_gameplay_scene():
     model = AppModel(load_levels(), SaveData(), Settings(camera_id=0))
     model.select_level("stonewake")
@@ -61,6 +79,26 @@ def test_pause_returns_to_the_same_gameplay_scene():
     assert model.scene is SceneId.PAUSE
     model.resume()
     assert model.scene is SceneId.GAMEPLAY
+
+
+def test_accessibility_settings_are_changeable_and_volume_is_clamped():
+    model = AppModel(load_levels(), SaveData(), Settings(master_volume=0.95))
+
+    model.adjust_master_volume(0.2)
+    model.toggle_reduced_flash()
+    model.toggle_reduced_shake()
+
+    assert model.settings.master_volume == 1.0
+    assert model.settings.reduced_flash is True
+    assert model.settings.reduced_shake is True
+
+
+def test_difficulty_can_be_selected_in_app():
+    model = AppModel(load_levels(), SaveData(), Settings())
+
+    model.set_difficulty(Difficulty.STORY)
+
+    assert model.save.difficulty is Difficulty.STORY
 
 
 def test_renderer_draws_readable_gameplay_without_optional_assets():
@@ -75,3 +113,16 @@ def test_renderer_draws_readable_gameplay_without_optional_assets():
     assert surface.get_at((20, 20)) != pygame.Color(0, 0, 0, 255)
     pygame.quit()
 
+
+def test_calibration_renderer_places_live_preview_inside_frame():
+    pygame.init()
+    target = pygame.Surface((1280, 720))
+    preview = pygame.Surface((320, 240))
+    preview.fill((12, 220, 34))
+    renderer = GameRenderer((1280, 720), asset_root=None)
+
+    renderer.draw_calibration(target, GestureFrame(1.0, (), True), Element, preview)
+
+    green_pixels = sum(1 for x in range(150, 750, 50) for y in range(200, 550, 50) if target.get_at((x, y)).g > 180)
+    assert green_pixels > 5
+    pygame.quit()

@@ -77,4 +77,3 @@ def test_losing_all_lives_finishes_only_the_current_level():
 
     assert session.snapshot().state is SessionState.FAILED
     assert any(event.type is GameEventType.LEVEL_FAILED for event in events)
-

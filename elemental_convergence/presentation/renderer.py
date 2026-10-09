@@ -97,12 +97,24 @@ class GameRenderer:
             self._text(target, line, 25, (150, 485 + index * 40))
         self._text(target, "Enter — continue", 18, (1020, 598), (165, 194, 208))
 
-    def draw_calibration(self, target: pygame.Surface, frame: GestureFrame, missing: Iterable[Element]) -> None:
+    def draw_calibration(
+        self,
+        target: pygame.Surface,
+        frame: GestureFrame,
+        missing: Iterable[Element],
+        camera_surface: pygame.Surface | None = None,
+    ) -> None:
         self._background(target, "calibration")
         self._text(target, "Camera & Gesture Calibration", 42, (self.width // 2, 60), center=True)
         self._text(target, "Center both hands in good light, then hold each pose.", 22, (self.width // 2, 105), (170, 192, 206), True)
         preview = pygame.Rect(70, 145, 760, 470)
         self._panel(target, preview)
+        if camera_surface is not None:
+            inner = preview.inflate(-36, -36)
+            target.blit(pygame.transform.smoothscale(camera_surface, inner.size), inner)
+            shade = pygame.Surface(inner.size, pygame.SRCALPHA)
+            shade.fill((3, 8, 16, 35))
+            target.blit(shade, inner)
         pygame.draw.rect(target, (99, 179, 207), preview.inflate(-100, -70), 2, border_radius=100)
         status = "CAMERA READY" if frame.camera_ok else "CAMERA NOT AVAILABLE — press C to retry"
         self._text(target, status, 20, (preview.centerx, 585), (112, 221, 167) if frame.camera_ok else (255, 118, 102), True)
@@ -165,6 +177,7 @@ class GameRenderer:
         panel = pygame.Rect(260, 150, 760, 420)
         self._panel(target, panel, 240)
         self._text(target, title, 46, (self.width // 2, 210), (255, 224, 151), True)
+        lines = list(lines)
+        spacing = min(48.0, 250.0 / max(1, len(lines) - 1))
         for index, line in enumerate(lines):
-            self._text(target, line, 23, (self.width // 2, 300 + index * 48), center=True)
-
+            self._text(target, line, 23, (self.width // 2, int(285 + index * spacing)), center=True)

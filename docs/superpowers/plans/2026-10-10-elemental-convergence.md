@@ -48,4 +48,3 @@ Route `handTrack.py` to the new app, add original artwork and attribution, PyIns
 ### Task 6: Whole-branch verification and delivery
 
 Run unit/integration tests, compilation, headless smoke tests, README command checks, diff checks, final self-review, then commit, push, and open a draft PR against `main`.
-

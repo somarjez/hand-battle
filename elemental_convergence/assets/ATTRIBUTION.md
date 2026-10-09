@@ -9,4 +9,3 @@
 - Project usage: included as original project artwork. Do not assume this grants rights to third-party trademarks added in later edits.
 
 Stage screens deliberately fall back to this image when a stage-specific illustration is absent. The renderer also contains a fully procedural fallback so missing artwork never prevents startup.
-

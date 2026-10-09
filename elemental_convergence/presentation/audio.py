@@ -68,7 +68,6 @@ class AudioManager:
             sound.play()
         except Exception:
             return
-
     def play_music(self, name: str) -> None:
         if not self.available:
             return

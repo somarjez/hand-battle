@@ -91,4 +91,3 @@ def load_levels(path: Path | None = None) -> dict[str, LevelDefinition]:
         if level.next_level is not None and level.next_level not in levels:
             raise ContentError(f"level {level.id}: unknown next level {level.next_level}")
     return levels
-

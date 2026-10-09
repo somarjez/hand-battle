@@ -39,4 +39,3 @@ coll = COLLECT(
     upx=True,
     name="ElementalConvergence",
 )
-

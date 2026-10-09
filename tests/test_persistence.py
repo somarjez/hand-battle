@@ -18,7 +18,6 @@ def test_save_round_trip_preserves_progress(tmp_path: Path):
 
     assert repository.load() == expected
 
-
 def test_corrupt_save_is_backed_up_and_replaced_with_defaults(tmp_path: Path):
     path = tmp_path / "save.json"
     path.write_text("not json", encoding="utf-8")

@@ -26,4 +26,3 @@ First run selects a camera and confirms framing plus the five poses. Settings ex
 - No online services, voice acting, mid-level checkpoints, branching campaign, or full entity-component framework.
 - Original names and assets only; asset origins and licenses are recorded.
 - Automated tests do not require a physical camera or audio device.
-

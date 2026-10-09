@@ -28,4 +28,3 @@ elemental_convergence = ["data/*.json", "assets/**/*"]
 addopts = "-p no:cacheprovider"
 testpaths = ["tests"]
 filterwarnings = ["ignore:pkg_resources is deprecated as an API:DeprecationWarning"]
-

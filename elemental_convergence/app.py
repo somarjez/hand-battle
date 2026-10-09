@@ -7,6 +7,7 @@ import cv2
 import pygame
 
 from .content import load_levels
+from .models import Difficulty
 from .persistence import SaveRepository, SettingsRepository, user_data_dir
 from .presentation.audio import AudioManager
 from .presentation.renderer import GameRenderer
@@ -60,6 +61,8 @@ class Application:
     def _start_camera(self, camera_id: int) -> None:
         if self.vision.start(camera_id):
             self.model.settings = replace(self.model.settings, camera_id=camera_id)
+        else:
+            self.model.camera_unavailable()
 
     def run(self) -> int:
         try:
@@ -126,6 +129,28 @@ class Application:
             self.model.resume()
         elif scene is SceneId.RESULTS and key in (pygame.K_RETURN, pygame.K_SPACE):
             self._after_results()
+        elif scene is SceneId.SETTINGS:
+            if key in (pygame.K_LEFT, pygame.K_MINUS):
+                self.model.adjust_master_volume(-0.1)
+            elif key in (pygame.K_RIGHT, pygame.K_EQUALS, pygame.K_PLUS):
+                self.model.adjust_master_volume(0.1)
+            elif key == pygame.K_x:
+                self.model.toggle_reduced_flash()
+            elif key == pygame.K_s:
+                self.model.toggle_reduced_shake()
+            elif key == pygame.K_f:
+                self.model.toggle_fullscreen()
+                flags = pygame.FULLSCREEN if self.model.settings.fullscreen else pygame.RESIZABLE
+                self.window = pygame.display.set_mode(LOGICAL_SIZE, flags)
+            elif key == pygame.K_c:
+                self.model.current_level_id = None
+                self.model.go(SceneId.CALIBRATION)
+            elif key in (pygame.K_1, pygame.K_2, pygame.K_3):
+                selected = {pygame.K_1: Difficulty.STORY, pygame.K_2: Difficulty.BALANCED, pygame.K_3: Difficulty.MASTER}[key]
+                self.model.set_difficulty(selected)
+            self.audio.master = self.model.settings.master_volume
+            self.settings_repository.save(self.model.settings)
+            self.save_repository.save(self.model.save)
 
     def _click(self, pos: tuple[int, int]) -> None:
         if self.model.scene is not SceneId.MENU:
@@ -205,7 +230,7 @@ class Application:
         if scene is SceneId.MENU:
             self.renderer.draw_menu(self.canvas, MENU_ITEMS, self.selected)
         elif scene is SceneId.CALIBRATION:
-            self.renderer.draw_calibration(self.canvas, self.vision.latest(), self.calibration.missing)
+            self.renderer.draw_calibration(self.canvas, self.vision.latest(), self.calibration.missing, self.last_camera_surface)
         elif scene is SceneId.STORY:
             level = self.levels[self.model.current_level_id or "stonewake"]
             self.renderer.draw_story(self.canvas, level.title, level.intro, level.id)
@@ -221,7 +246,9 @@ class Application:
         elif scene is SceneId.RESULTS:
             self.renderer.draw_gameplay(self.canvas, self.session.snapshot(), self.last_camera_surface)
             title = "SEAL RESTORED" if self.model.last_result == "complete" else "THE RIFT PREVAILS"
-            lines = [f"Score: {self.session.snapshot().score}", "Enter — continue" if self.model.last_result == "complete" else "Enter — retry level", "Esc — main menu"]
+            level = self.levels[self.model.current_level_id or "stonewake"]
+            story = list(level.outro) if self.model.last_result == "complete" else []
+            lines = [f"Score: {self.session.snapshot().score}", *story, "Enter — continue" if self.model.last_result == "complete" else "Enter — retry level", "Esc — main menu"]
             self.renderer.draw_overlay(self.canvas, title, lines)
         elif scene is SceneId.LEVEL_SELECT:
             unlocked = self.model.save.unlocked_levels
@@ -240,7 +267,7 @@ class Application:
         elif scene is SceneId.SETTINGS:
             settings = self.model.settings
             self.renderer._background(self.canvas, "menu")
-            self.renderer.draw_overlay(self.canvas, "SETTINGS", [f"Camera: {settings.camera_id if settings.camera_id is not None else 'automatic'}", f"Master volume: {settings.master_volume:.0%}", f"Reduced flash: {'On' if settings.reduced_flash else 'Off'}", f"Reduced shake: {'On' if settings.reduced_shake else 'Off'}", "Edit settings.json for advanced options • Esc — back"])
+            self.renderer.draw_overlay(self.canvas, "SETTINGS", [f"Difficulty: {self.model.save.difficulty.value.title()}  (1 Story / 2 Balanced / 3 Master)", f"Camera: {settings.camera_id if settings.camera_id is not None else 'automatic'}  (C — recalibrate)", f"Master volume: {settings.master_volume:.0%}  (Left/Right)", f"Fullscreen: {'On' if settings.fullscreen else 'Off'}  (F)", f"Reduced flash: {'On' if settings.reduced_flash else 'Off'}  (X)", f"Reduced shake: {'On' if settings.reduced_shake else 'Off'}  (S)", "Esc — save and return"])
         else:
             self.renderer._background(self.canvas, "menu")
             self.renderer.draw_overlay(self.canvas, "CREDITS", ["Design & development — project contributors", "Vision — OpenCV, MediaPipe, cvzone", "Interface & audio — Pygame", "Thank you for restoring the seals.", "Esc — main menu"])
@@ -259,4 +286,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

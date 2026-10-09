@@ -72,6 +72,9 @@ elemental-convergence --camera 1
 | `Esc` | Secondary screen | Return to the main menu |
 | `C` | Calibration | Try the next camera index |
 | `Space` | Calibration | Continue with default thresholds |
+| `1` / `2` / `3` | Settings | Select Story / Balanced / Master difficulty |
+| `F` / `X` / `S` | Settings | Toggle fullscreen / reduced flash / reduced shake |
+| Left / Right | Settings | Adjust master volume |
 
 Combat casts automatically while a recognized pose is held and the relevant mana/cooldown permits it. Keep at least one hand visible: after the difficulty-specific grace period, missing hands drain health.
 

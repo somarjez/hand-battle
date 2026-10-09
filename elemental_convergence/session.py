@@ -357,4 +357,3 @@ def complete_level(save: SaveData, level: LevelDefinition, score: int) -> SaveDa
         completed_levels=tuple(completed),
         best_scores=scores,
     )
-
