@@ -5,6 +5,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import pygame
 import numpy as np
+import pytest
 
 from elemental_convergence.app import camera_to_surface
 from elemental_convergence.content import load_levels
@@ -28,11 +29,13 @@ def test_procedural_audio_fallback_is_stereo_and_audible():
     assert np.max(np.abs(samples)) > 0
 
 
-def test_first_new_game_routes_through_calibration_then_story():
+def test_first_new_game_routes_through_prologue_then_calibration_then_story():
     model = AppModel(load_levels(), SaveData(), Settings(camera_id=None))
 
     model.new_game()
-    assert model.scene is SceneId.CALIBRATION
+    assert model.scene is SceneId.PROLOGUE
+    model.finish_prologue()
+    assert model.save.prologue_seen and model.scene is SceneId.CALIBRATION
 
     model.finish_calibration(camera_id=1)
     assert model.scene is SceneId.STORY
@@ -40,7 +43,7 @@ def test_first_new_game_routes_through_calibration_then_story():
 
 
 def test_failed_saved_camera_forces_recalibration_on_next_game():
-    model = AppModel(load_levels(), SaveData(), Settings(camera_id=5))
+    model = AppModel(load_levels(), SaveData(prologue_seen=True), Settings(camera_id=5))
 
     model.camera_unavailable()
     model.new_game()
@@ -126,3 +129,36 @@ def test_calibration_renderer_places_live_preview_inside_frame():
     green_pixels = sum(1 for x in range(150, 750, 50) for y in range(200, 550, 50) if target.get_at((x, y)).g > 180)
     assert green_pixels > 5
     pygame.quit()
+
+
+def test_the_prologue_is_only_shown_once():
+    model = AppModel(load_levels(), SaveData(), Settings(camera_id=3))
+    model.new_game()
+    assert model.scene is SceneId.PROLOGUE
+    model.finish_prologue()
+    assert model.scene is SceneId.STORY
+    model.go(SceneId.MENU)
+    model.new_game()
+    assert model.scene is SceneId.STORY
+
+
+def test_settings_return_to_where_they_were_opened_from():
+    model = AppModel(load_levels(), SaveData(), Settings())
+    model.open_settings()
+    assert model.scene is SceneId.SETTINGS
+    model.close_settings()
+    assert model.scene is SceneId.MENU
+    model.go(SceneId.PAUSE)
+    model.open_settings()
+    model.close_settings()
+    assert model.scene is SceneId.PAUSE
+
+
+def test_set_setting_validates_names_and_clamps_volumes():
+    model = AppModel(load_levels(), SaveData(), Settings())
+    model.set_setting(music_volume=7, sfx_volume=-3, show_hand_overlay=False)
+    assert (model.settings.music_volume, model.settings.sfx_volume, model.settings.show_hand_overlay) == (1.0, 0.0, False)
+    with pytest.raises(KeyError):
+        model.set_setting(not_a_setting=1)
+    with pytest.raises(KeyError):
+        model.set_setting(version=9)

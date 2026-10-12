@@ -22,6 +22,9 @@ class SceneId(StrEnum):
     HOW_TO_PLAY = "how_to_play"
     SANDBOX = "sandbox"
     CREDITS = "credits"
+    PROLOGUE = "prologue"
+    EPILOGUE = "epilogue"
+    CODEX = "codex"
 
 
 class AppModel:
@@ -35,6 +38,7 @@ class AppModel:
         self.current_level_id: str | None = None
         self.previous_scene = SceneId.MENU
         self.last_result: str | None = None
+        self.settings_return = SceneId.MENU          # where Settings goes back to (menu or pause)
 
     def go(self, scene: SceneId) -> None:
         self.previous_scene = self.scene
@@ -42,7 +46,31 @@ class AppModel:
 
     def new_game(self) -> None:
         self.current_level_id = "stonewake"
+        if not self.save.prologue_seen:
+            self.go(SceneId.PROLOGUE)             # first time: the story starts here
+        else:
+            self._go_to_campaign()
+
+    def finish_prologue(self) -> None:
+        self.save = replace(self.save, prologue_seen=True)
         self._go_to_campaign()
+
+    def open_settings(self) -> None:
+        self.settings_return = self.scene if self.scene in (SceneId.MENU, SceneId.PAUSE) else SceneId.MENU
+        self.go(SceneId.SETTINGS)
+
+    def close_settings(self) -> None:
+        self.go(self.settings_return)
+        self.settings_return = SceneId.MENU
+
+    def set_setting(self, **changes) -> None:
+        """Change one or more settings (validated against the Settings fields)."""
+        for name, value in list(changes.items()):
+            if name not in self.settings.__dataclass_fields__ or name == "version":
+                raise KeyError(name)
+            if name.endswith("_volume"):
+                changes[name] = round(min(1.0, max(0.0, float(value))), 2)
+        self.settings = replace(self.settings, **changes)
 
     def continue_game(self) -> None:
         incomplete = [item for item in self.save.unlocked_levels if item not in self.save.completed_levels]
