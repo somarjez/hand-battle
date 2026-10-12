@@ -1,72 +1,352 @@
 [
-  {
-    "id": "stonewake",
-    "title": "Stonewake Sanctuary",
-    "unlock": "earth",
-    "intro": ["The Stone Seal answers a steady hand.", "Stand your ground and awaken the first element."],
-    "outro": ["Stone remembers your resolve. The drowned ruins now call."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"shooter": 3}},
-      {"objective": "defeat_all", "enemies": {"shooter": 3, "charger": 2}},
-      {"objective": "survive", "duration_seconds": 30, "enemies": {"shooter": 2, "charger": 3}}
-    ],
-    "boss": "stone_guardian",
-    "next_level": "tidelost"
+ {
+  "id": "stonewake",
+  "title": "Stonewake Sanctuary",
+  "subtitle": "The Seal of Stone",
+  "keeper": "Orrin the Unmoving",
+  "unlock": "earth",
+  "intro": [
+   "Stonewake was built by the first Wardens to teach patience.",
+   "Orrin the Unmoving kept the Stone Seal here. The shadows have buried him alive.",
+   "Make a fist and the earth will answer. Stand your ground, Warden."
+  ],
+  "outro": [
+   "The stone remembers your resolve. Somewhere beneath the rubble, Orrin exhales.",
+   "Water calls from the drowned ruins to the east."
+  ],
+  "wave_titles": [
+   "Tremors",
+   "Shadows in the Rubble",
+   "The Long Night",
+   "The Stone Guardian"
+  ],
+  "boss_name": "Stone Guardian",
+  "boss_lines": {
+   "intro": "Orrin's guardian wakes, twisted by the Rift: STAY... DOWN...",
+   "phase2": "Cracks race across its body, and the ground answers with falling stone.",
+   "phase3": "Its eyes burn red. It will crush anything that stands still!",
+   "defeat": "The Stone Guardian crumbles. The Seal of Stone hums back to life."
   },
-  {
-    "id": "tidelost",
-    "title": "Tidelost Ruins",
-    "unlock": "water",
-    "intro": ["The Tide Seal lies beneath a sky of falling embers.", "Flow around danger; turn every attack aside."],
-    "outro": ["The ruins breathe again. A path opens above the clouds."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"shooter": 2, "sniper": 2}},
-      {"objective": "defeat_all", "enemies": {"bomber": 3, "shooter": 2}},
-      {"objective": "survive", "duration_seconds": 35, "enemies": {"sniper": 2, "bomber": 3}}
-    ],
-    "boss": "tide_guardian",
-    "next_level": "skyglass"
+  "lore": [
+   "Stonewake was raised in a single night by the first Wardens, who believed that patience was the first element.",
+   "Its Seal binds the earth. What is rooted cannot be unmade, and what is unmade can be rooted again."
+  ],
+  "hazard": {
+   "kind": "rockfall",
+   "label": "FALLING ROCKS!",
+   "first": 9,
+   "interval": 11
   },
-  {
-    "id": "skyglass",
-    "title": "Skyglass Spires",
-    "unlock": "air",
-    "intro": ["The Gale Seal waits where broken towers touch the wind.", "Move lightly; find the opening in every pattern."],
-    "outro": ["The storm clears. Far below, the Cinderforge burns."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"gunner": 2, "shooter": 3}},
-      {"objective": "defeat_all", "enemies": {"caster": 3, "gunner": 2}},
-      {"objective": "survive", "duration_seconds": 40, "enemies": {"caster": 3, "gunner": 3}}
-    ],
-    "boss": "gale_guardian",
-    "next_level": "cinderforge"
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "shooter": 3
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 8,
+    "enemies": {
+     "shooter": 2,
+     "charger": 2
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 30,
+    "enemies": {
+     "shooter": 2,
+     "charger": 2
+    },
+    "elite": [
+     "charger"
+    ]
+   }
+  ],
+  "boss": "stone_guardian",
+  "next_level": "tidelost"
+ },
+ {
+  "id": "tidelost",
+  "title": "Tidelost Ruins",
+  "subtitle": "The Seal of Tide",
+  "keeper": "Sael of the Drowned Bell",
+  "unlock": "water",
+  "intro": [
+   "The Tidelost Ruins drown beneath a sky of falling embers.",
+   "Sael's bell has not rung since the Rift, and the water has learned to hold grudges.",
+   "Water does not fight the stone; it flows around it. Flow around danger, Warden."
+  ],
+  "outro": [
+   "The bell rings once, clear and low. The tide remembers its shape.",
+   "Above the clouds, the Skyglass Spires flicker like a signal fire."
+  ],
+  "wave_titles": [
+   "Ebb",
+   "Rising Water",
+   "The Drowned Hour",
+   "The Tide Guardian"
+  ],
+  "boss_name": "Tide Guardian",
+  "boss_lines": {
+   "intro": "The Drowned Bell tolls, and something vast surfaces beneath it.",
+   "phase2": "The water around it turns black. Watch for the surge!",
+   "phase3": "It sheds its shell. What is left moves like a flood.",
+   "defeat": "The Tide Guardian dissolves into rain. The bell rings on."
   },
-  {
-    "id": "cinderforge",
-    "title": "Cinderforge",
-    "unlock": "fire",
-    "intro": ["The Ember Seal is chained to the forge-heart.", "Strike with purpose before the dark can blink away."],
-    "outro": ["Four seals burn as one. The Eclipse Citadel is exposed."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"spinner": 3, "sweeper": 2}},
-      {"objective": "defeat_all", "enemies": {"blinker": 3, "spinner": 2}},
-      {"objective": "survive", "duration_seconds": 45, "enemies": {"spinner": 2, "sweeper": 2, "blinker": 2}}
-    ],
-    "boss": "ember_guardian",
-    "next_level": "eclipse"
+  "lore": [
+   "The ruins were a harbor city. Its people left the bell behind so that the sea would always know where home was.",
+   "The Tide Seal binds water, and water carries every message the world has ever sent."
+  ],
+  "hazard": {
+   "kind": "tide",
+   "label": "TIDAL SURGE!",
+   "first": 10,
+   "interval": 15
   },
-  {
-    "id": "eclipse",
-    "title": "Eclipse Citadel",
-    "unlock": "lightning",
-    "intro": ["Every restored seal points to the same wound in the world.", "Master Lightning. Enter Convergence. End the Rift."],
-    "outro": ["The seals are whole. Dawn reaches every corner of the realm.", "The Warden's journey is complete."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"charger": 2, "sniper": 2, "caster": 2}},
-      {"objective": "defeat_all", "enemies": {"gunner": 2, "spinner": 2, "blinker": 2}},
-      {"objective": "survive", "duration_seconds": 50, "enemies": {"bomber": 2, "sweeper": 2, "caster": 2}}
-    ],
-    "boss": "rift_sovereign",
-    "next_level": null
-  }
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "shooter": 2,
+     "sniper": 2
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 9,
+    "enemies": {
+     "bomber": 2,
+     "shooter": 2
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 35,
+    "enemies": {
+     "sniper": 2,
+     "bomber": 2
+    },
+    "elite": [
+     "sniper"
+    ]
+   }
+  ],
+  "boss": "tide_guardian",
+  "next_level": "skyglass"
+ },
+ {
+  "id": "skyglass",
+  "title": "Skyglass Spires",
+  "subtitle": "The Seal of Gale",
+  "keeper": "Ysa, Windreader",
+  "unlock": "air",
+  "intro": [
+   "The Skyglass Spires are broken towers of glass that sing in the wind.",
+   "Ysa Windreader read the sky for a hundred years. Now the sky is reading her.",
+   "Air gives way to nothing and yields to everything. Move lightly, Warden."
+  ],
+  "outro": [
+   "The storm clears. For the first time in a month, a star is visible.",
+   "Far below, the Cinderforge burns hotter than any forge should."
+  ],
+  "wave_titles": [
+   "First Gust",
+   "Crosswinds",
+   "Eye of the Storm",
+   "The Gale Guardian"
+  ],
+  "boss_name": "Gale Guardian",
+  "boss_lines": {
+   "intro": "The wind goes silent, which is worse than any storm.",
+   "phase2": "Walls of wind close in. Find the gap!",
+   "phase3": "The silence breaks. Everything it has is coming at once.",
+   "defeat": "The Gale Guardian unravels into a clear sky."
+  },
+  "lore": [
+   "Ysa taught that the wind has no enemies, only obstacles it has not met yet.",
+   "The Gale Seal binds air. Wherever it is whole, no storm can hold a grudge for long."
+  ],
+  "hazard": {
+   "kind": "storm",
+   "label": "LIGHTNING STORM!",
+   "first": 10,
+   "interval": 16
+  },
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "gunner": 2,
+     "shooter": 3
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 10,
+    "enemies": {
+     "caster": 2,
+     "gunner": 1
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 40,
+    "enemies": {
+     "caster": 3,
+     "gunner": 2
+    },
+    "elite": [
+     "gunner"
+    ]
+   }
+  ],
+  "boss": "gale_guardian",
+  "next_level": "cinderforge"
+ },
+ {
+  "id": "cinderforge",
+  "title": "Cinderforge",
+  "subtitle": "The Seal of Ember",
+  "keeper": "Kael Emberhand",
+  "unlock": "fire",
+  "intro": [
+   "The Cinderforge never cooled. Kael Emberhand made the Wardens' first blades here.",
+   "The Ember Seal is chained to the forge-heart, and the dark is trying to melt the chains.",
+   "Fire is purpose made visible. Strike before the dark can blink away."
+  ],
+  "outro": [
+   "Four seals burn as one. The Loom of Dawn shudders and begins to turn.",
+   "The Eclipse Citadel is exposed at last."
+  ],
+  "wave_titles": [
+   "Sparks",
+   "Slag and Shadow",
+   "The Forge Roars",
+   "The Ember Guardian"
+  ],
+  "boss_name": "Ember Guardian",
+  "boss_lines": {
+   "intro": "The forge-heart opens like an eye.",
+   "phase2": "Molten rain begins to fall. Keep moving!",
+   "phase3": "It is burning its own seal to keep you out.",
+   "defeat": "The Ember Guardian goes dark. The forge-heart beats steadily again."
+  },
+  "lore": [
+   "Kael believed that a blade was only a promise somebody had hammered flat.",
+   "The Ember Seal binds fire. Fire does not destroy, it transforms, and the Rift is afraid of that."
+  ],
+  "hazard": {
+   "kind": "forge",
+   "label": "FORGE FLARE!",
+   "first": 8,
+   "interval": 12
+  },
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "spinner": 3,
+     "sweeper": 2
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 10,
+    "enemies": {
+     "blinker": 3,
+     "spinner": 1
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 45,
+    "enemies": {
+     "spinner": 2,
+     "sweeper": 2,
+     "blinker": 2
+    },
+    "elite": [
+     "sweeper"
+    ]
+   }
+  ],
+  "boss": "ember_guardian",
+  "next_level": "eclipse"
+ },
+ {
+  "id": "eclipse",
+  "title": "Eclipse Citadel",
+  "subtitle": "The Rift",
+  "keeper": "Veyra, the Rift Sovereign",
+  "unlock": "lightning",
+  "intro": [
+   "Every restored seal points to the same wound in the world.",
+   "At its center waits the Rift Sovereign: Veyra, the Warden who taught you everything.",
+   "She tried to hold all five elements alone. The Rift was the price.",
+   "Master Lightning. Enter Convergence. Bring her home."
+  ],
+  "outro": [
+   "Veyra kneels, and the Rift closes around her like a held breath.",
+   "Dawn reaches every corner of the realm. The seals are whole."
+  ],
+  "wave_titles": [
+   "The Threshold",
+   "Echoes of Veyra",
+   "The Last Night",
+   "The Rift Sovereign"
+  ],
+  "boss_name": "Rift Sovereign",
+  "boss_lines": {
+   "intro": "'I held all five alone, little Warden. Show me you can do better.'",
+   "phase2": "'You have two hands. I only ever trusted one.'",
+   "phase3": "'Then show me the Convergence. Show me what I missed.'",
+   "defeat": "'Two hands... not one. I should have taught you that first.'"
+  },
+  "lore": [
+   "Veyra was the strongest Warden of her age. She believed that a single will could carry all five elements.",
+   "She was wrong, but she was brave, and the Rift remembers her as both."
+  ],
+  "hazard": {
+   "kind": "eclipse",
+   "label": "ECLIPSE SURGE!",
+   "first": 8,
+   "interval": 14
+  },
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "charger": 2,
+     "sniper": 2,
+     "caster": 2
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 12,
+    "enemies": {
+     "gunner": 2,
+     "spinner": 2,
+     "blinker": 1
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 50,
+    "enemies": {
+     "bomber": 2,
+     "sweeper": 2,
+     "caster": 2
+    },
+    "elite": [
+     "gunner",
+     "blinker"
+    ]
+   }
+  ],
+  "boss": "rift_sovereign",
+  "next_level": null
+ }
 ]

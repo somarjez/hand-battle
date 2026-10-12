@@ -16,13 +16,21 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "pyinstaller>=6,<7"]
+dev = ["pytest>=8,<10", "pyinstaller>=6,<7", "ruff>=0.5"]
 
 [project.scripts]
 elemental-convergence = "elemental_convergence.app:main"
 
 [tool.setuptools.package-data]
 elemental_convergence = ["data/*.json", "assets/**/*"]
+
+[tool.ruff]
+line-length = 140
+exclude = [".worktrees", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E9", "F", "B"]
+ignore = ["B905"]
 
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"

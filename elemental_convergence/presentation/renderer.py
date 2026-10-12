@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+import math
+import random
 from pathlib import Path
 from typing import Iterable
 
+import cv2
+import numpy as np
 import pygame
 
-from ..models import Element, GestureFrame
-from ..session import GameSnapshot, SessionState
+from ..models import Element, GestureFrame, REFERENCE_SIZE
+from ..session import GameEvent, GameSnapshot
+from .battle_view import BattleView, cover_resize
+from .effects import RGB, lighten, mix, scale_color
+from .screens import ScreenDrawing
 
 
 ELEMENT_COLORS = {
@@ -17,22 +24,93 @@ ELEMENT_COLORS = {
     Element.LIGHTNING: (255, 218, 92),
 }
 
+# Colour grade for each stage so the story screens feel different.
+LEVEL_TINT: dict[str, RGB] = {
+    "stonewake": (120, 80, 40),
+    "tidelost": (30, 90, 150),
+    "skyglass": (110, 150, 160),
+    "cinderforge": (170, 60, 20),
+    "eclipse": (90, 40, 130),
+}
 
-class GameRenderer:
-    def __init__(self, logical_size: tuple[int, int] = (1280, 720), asset_root: Path | None = None):
+
+def surface_to_bgr(surface: pygame.Surface) -> np.ndarray:
+    """pygame surface -> BGR image (only used when a caller has no OpenCV frame)."""
+    rgb = pygame.surfarray.array3d(surface).transpose(1, 0, 2)
+    return np.ascontiguousarray(rgb[:, :, ::-1])
+
+
+def bgr_to_surface(image: np.ndarray) -> pygame.Surface:
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    return pygame.image.frombuffer(rgb, (image.shape[1], image.shape[0]), "RGB")
+
+
+class GameRenderer(ScreenDrawing):
+    def __init__(self, logical_size: tuple[int, int] = REFERENCE_SIZE, asset_root: Path | None = None):
         self.width, self.height = logical_size
         self.asset_root = asset_root or Path(__file__).parents[1] / "assets"
-        self._fonts: dict[int, pygame.font.Font] = {}
+        self._fonts: dict[tuple[int, bool], pygame.font.Font] = {}
         self._backgrounds: dict[str, pygame.Surface | None] = {}
+        self._scaled_bg: dict[tuple[str, tuple[int, int]], pygame.Surface] = {}
+        self._text_cache: dict[tuple, pygame.Surface] = {}
+        self.battle = BattleView()
+        self._embers = [(random.random(), random.random(), random.uniform(0.02, 0.07), random.uniform(1.5, 3.6), i % 3)
+                        for i in range(46)]
+        self._clock = 0.0
 
-    def font(self, size: int) -> pygame.font.Font:
+    # ---- accessibility ---------------------------------------------------------
+    @property
+    def reduced_flash(self) -> bool:
+        return self.battle.reduced_flash
+
+    @reduced_flash.setter
+    def reduced_flash(self, value: bool) -> None:
+        self.battle.reduced_flash = bool(value)
+
+    @property
+    def reduced_shake(self) -> bool:
+        return self.battle.reduced_shake
+
+    @reduced_shake.setter
+    def reduced_shake(self, value: bool) -> None:
+        self.battle.reduced_shake = bool(value)
+
+    # ---- text / fonts ----------------------------------------------------------
+    def font(self, size: int, bold: bool = False) -> pygame.font.Font:
         if not pygame.font.get_init():
             pygame.font.init()
-        if size not in self._fonts:
-            self._fonts[size] = pygame.font.SysFont("segoeui", size)
-        return self._fonts[size]
+        key = (size, bold)
+        if key not in self._fonts:
+            self._fonts[key] = pygame.font.SysFont("segoeui", size, bold=bold)
+        return self._fonts[key]
 
+    def _text(self, target, text: str, size: int, pos, color=(238, 244, 248), center=False,
+              outline: bool = False, bold: bool = False, anchor: str | None = None):
+        key = (text, size, color, outline, bold)
+        image = self._text_cache.get(key)
+        if image is None:
+            if len(self._text_cache) > 600:
+                self._text_cache.clear()
+            base = self.font(size, bold).render(text, True, color)
+            if outline:
+                dark = self.font(size, bold).render(text, True, (6, 8, 14))
+                image = pygame.Surface((base.get_width() + 4, base.get_height() + 4), pygame.SRCALPHA)
+                for ox, oy in ((0, 2), (4, 2), (2, 0), (2, 4), (0, 0), (4, 4), (0, 4), (4, 0)):
+                    image.blit(dark, (ox, oy))
+                image.blit(base, (2, 2))
+            else:
+                image = base
+            self._text_cache[key] = image
+        if anchor:                                           # e.g. "midleft" / "midright" for vertically centred rows
+            rect = image.get_rect(**{anchor: pos})
+        else:
+            rect = image.get_rect(center=pos) if center else image.get_rect(topleft=pos)
+        target.blit(image, rect)
+        return rect
+
+    # ---- backgrounds -----------------------------------------------------------
     def _background(self, target: pygame.Surface, name: str = "menu") -> None:
+        """Fill the whole canvas with the stage image (cropped to fit, never stretched)."""
         cached = self._backgrounds.get(name)
         if name not in self._backgrounds:
             path = self.asset_root / "images" / f"{name}.png"
@@ -43,22 +121,46 @@ class GameRenderer:
             except (FileNotFoundError, pygame.error):
                 cached = None
             self._backgrounds[name] = cached
+        size = target.get_size()
         if cached is not None:
-            target.blit(pygame.transform.smoothscale(cached, target.get_size()), (0, 0))
-            return
-        top, bottom = (8, 15, 31), (26, 46, 63)
-        for y in range(target.get_height()):
-            ratio = y / max(1, target.get_height() - 1)
-            color = tuple(int(a + (b - a) * ratio) for a, b in zip(top, bottom))
-            pygame.draw.line(target, color, (0, y), (target.get_width(), y))
-        for x, color in ((180, (120, 76, 42)), (460, (40, 130, 180)), (820, (190, 78, 40)), (1080, (190, 160, 55))):
-            pygame.draw.circle(target, (*color, 0), (x, 160), 160, 3)
+            key = (name, size)
+            scaled = self._scaled_bg.get(key)
+            if scaled is None:
+                scale = max(size[0] / cached.get_width(), size[1] / cached.get_height())
+                big = pygame.transform.smoothscale(cached, (max(size[0], int(cached.get_width() * scale)),
+                                                            max(size[1], int(cached.get_height() * scale))))
+                scaled = big.subsurface(pygame.Rect((big.get_width() - size[0]) // 2,
+                                                    (big.get_height() - size[1]) // 2, *size)).copy()
+                self._scaled_bg[key] = scaled
+            target.blit(scaled, (0, 0))
+        else:
+            top, bottom = (8, 15, 31), (26, 46, 63)
+            for y in range(size[1]):
+                ratio = y / max(1, size[1] - 1)
+                color = tuple(int(a + (b - a) * ratio) for a, b in zip(top, bottom))
+                pygame.draw.line(target, color, (0, y), (size[0], y))
+        tint = LEVEL_TINT.get(name)
+        if tint is not None:                                  # each stage gets its own colour grade
+            wash = pygame.Surface(size, pygame.SRCALPHA)
+            wash.fill((*tint, 46))
+            target.blit(wash, (0, 0))
 
-    def _text(self, target, text: str, size: int, pos, color=(238, 244, 248), center=False):
-        image = self.font(size).render(text, True, color)
-        rect = image.get_rect(center=pos) if center else image.get_rect(topleft=pos)
-        target.blit(image, rect)
-        return rect
+    def _ui(self, target: pygame.Surface, name: str) -> pygame.Surface:
+        """Paint the background over the whole canvas and return the centred 1280x720 area for UI."""
+        self._background(target, name)
+        tw, th = target.get_size()
+        rect = pygame.Rect((tw - self.width) // 2, (th - self.height) // 2, self.width, self.height).clip(target.get_rect())
+        return target.subsurface(rect)
+
+    def _draw_embers(self, target: pygame.Surface, tint: RGB | None = None) -> None:
+        """Slowly rising embers: pure function of time, so menus feel alive without any state."""
+        w, h = target.get_size()
+        for i, (sx, sy, speed, size, kind) in enumerate(self._embers):
+            x = (sx * w + math.sin(self._clock * 0.6 + i) * 26) % w
+            y = h - ((self._clock * speed * h + sy * h) % h)
+            base = tint or ((255, 170, 80), (130, 200, 255), (255, 236, 170))[kind]
+            fade = 0.35 + 0.65 * math.sin((y / h) * math.pi)
+            pygame.draw.circle(target, scale_color(base, fade), (int(x), int(y)), max(1, int(size)))
 
     def _panel(self, target, rect, alpha=205):
         panel = pygame.Surface(rect.size, pygame.SRCALPHA)
@@ -66,36 +168,54 @@ class GameRenderer:
         pygame.draw.rect(panel, (110, 154, 181, 130), panel.get_rect(), 2, border_radius=16)
         target.blit(panel, rect)
 
+    # ---- menu / story / calibration -------------------------------------------
     def draw_menu(self, target: pygame.Surface, items: list[str], selected: int) -> list[pygame.Rect]:
-        self._background(target, "menu")
+        self._clock = pygame.time.get_ticks() / 1000.0
+        full = target
+        target = self._ui(full, "menu")
+        self._draw_embers(full)
+        glow = 0.5 + 0.5 * math.sin(self._clock * 2.0)
         self._text(target, "ELEMENTAL", 31, (self.width // 2, 82), (174, 207, 222), True)
-        self._text(target, "CONVERGENCE", 64, (self.width // 2, 135), (248, 245, 226), True)
+        self._text(target, "CONVERGENCE", 64, (self.width // 2, 135), mix((248, 245, 226), (255, 226, 160), glow), True, outline=True)
         self._text(target, "A gesture-controlled elemental journey", 22, (self.width // 2, 184), (160, 184, 200), True)
         rects = []
         start = 245
         for index, label in enumerate(items):
             rect = pygame.Rect(self.width // 2 - 190, start + index * 52, 380, 42)
-            fill = (42, 106, 136, 230) if index == selected else (8, 18, 31, 205)
+            active = index == selected
+            if active:
+                rect = rect.inflate(int(10 + 6 * glow), 0)
+            fill = (42, 106, 136, 235) if active else (8, 18, 31, 205)
             panel = pygame.Surface(rect.size, pygame.SRCALPHA)
             panel.fill(fill)
-            pygame.draw.rect(panel, (118, 187, 210), panel.get_rect(), 2, border_radius=10)
+            border = mix((118, 187, 210), (255, 235, 170), glow) if active else (118, 187, 210)
+            pygame.draw.rect(panel, border, panel.get_rect(), 2, border_radius=10)
             target.blit(panel, rect)
-            self._text(target, label, 24, rect.center, center=True)
-            rects.append(rect)
+            self._text(target, label, 24, rect.center, (255, 250, 235) if active else (238, 244, 248), center=True)
+            if active:
+                for sx in (-1, 1):
+                    tip = (rect.centerx + sx * (rect.w // 2 - 16), rect.centery)
+                    pygame.draw.polygon(target, (255, 226, 150), [(tip[0], tip[1] - 6), (tip[0] - sx * 10, tip[1]), (tip[0], tip[1] + 6)])
+            rects.append(pygame.Rect(self.width // 2 - 190, start + index * 52, 380, 42))
         self._text(target, "Arrow keys / mouse • Enter to select • Esc to go back", 18, (self.width // 2, 688), (144, 165, 180), True)
         return rects
 
     def draw_story(self, target: pygame.Surface, title: str, lines: Iterable[str], stage: str) -> None:
-        self._background(target, stage)
-        veil = pygame.Surface(target.get_size(), pygame.SRCALPHA)
+        self._clock = pygame.time.get_ticks() / 1000.0
+        full = target
+        target = self._ui(full, stage)
+        veil = pygame.Surface(full.get_size(), pygame.SRCALPHA)
         veil.fill((3, 7, 15, 115))
-        target.blit(veil, (0, 0))
+        full.blit(veil, (0, 0))
+        tint = LEVEL_TINT.get(stage)
+        self._draw_embers(full, lighten(tint, 0.45) if tint else None)
         panel = pygame.Rect(110, 390, 1060, 245)
         self._panel(target, panel, 225)
         self._text(target, title, 38, (150, 425), (255, 221, 145))
         for index, line in enumerate(lines):
             self._text(target, line, 25, (150, 485 + index * 40))
-        self._text(target, "Enter — continue", 18, (1020, 598), (165, 194, 208))
+        pulse = 0.6 + 0.4 * math.sin(self._clock * 3.0)
+        self._text(target, "Enter — continue", 18, (1020, 598), scale_color((165, 194, 208), 0.6 + 0.4 * pulse))
 
     def draw_calibration(
         self,
@@ -104,14 +224,14 @@ class GameRenderer:
         missing: Iterable[Element],
         camera_surface: pygame.Surface | None = None,
     ) -> None:
-        self._background(target, "calibration")
+        target = self._ui(target, "calibration")
         self._text(target, "Camera & Gesture Calibration", 42, (self.width // 2, 60), center=True)
         self._text(target, "Center both hands in good light, then hold each pose.", 22, (self.width // 2, 105), (170, 192, 206), True)
         preview = pygame.Rect(70, 145, 760, 470)
         self._panel(target, preview)
         if camera_surface is not None:
             inner = preview.inflate(-36, -36)
-            target.blit(pygame.transform.smoothscale(camera_surface, inner.size), inner)
+            target.blit(bgr_to_surface(cover_resize(surface_to_bgr(camera_surface), inner.size)), inner)
             shade = pygame.Surface(inner.size, pygame.SRCALPHA)
             shade.fill((3, 8, 16, 35))
             target.blit(shade, inner)
@@ -127,53 +247,47 @@ class GameRenderer:
             self._text(target, "Detected" if element not in missing_set else "Waiting…", 17, (930, y + 31), color)
         self._text(target, "Space — use defaults   C — retry camera   Esc — back", 18, (self.width // 2, 680), (160, 181, 196), True)
 
-    def draw_gameplay(self, target: pygame.Surface, snapshot: GameSnapshot, camera_surface: pygame.Surface | None) -> None:
-        if camera_surface is None:
-            self._background(target, snapshot.level_id or "arena")
-        else:
-            target.blit(pygame.transform.smoothscale(camera_surface, target.get_size()), (0, 0))
-        veil = pygame.Surface(target.get_size(), pygame.SRCALPHA)
-        veil.fill((3, 7, 15, 70))
-        target.blit(veil, (0, 0))
-        self._panel(target, pygame.Rect(18, 16, 300, 92), 190)
-        self._text(target, snapshot.level_title, 21, (36, 27), (240, 226, 184))
-        hp_rect = pygame.Rect(36, 62, 240, 18)
-        pygame.draw.rect(target, (35, 39, 48), hp_rect, border_radius=8)
-        pygame.draw.rect(target, (70, 202, 119) if snapshot.hp > 30 else (240, 79, 74), (hp_rect.x, hp_rect.y, int(hp_rect.width * snapshot.hp / 100), hp_rect.height), border_radius=8)
-        self._text(target, f"HP {int(snapshot.hp)}   Lives {'●' * snapshot.lives}{'○' * (3 - snapshot.lives)}", 17, (36, 84))
-        objective = "FINAL GUARDIAN" if snapshot.state is SessionState.BOSS else f"WAVE {snapshot.wave_number}/3 • {snapshot.objective.replace('_', ' ').upper()}"
-        self._text(target, objective, 25, (self.width // 2, 35), (255, 228, 150), True)
-        self._text(target, f"SCORE {snapshot.score:05d}", 21, (1120, 28), center=True)
+    def draw_camera_cover(self, target: pygame.Surface, image: np.ndarray | None) -> None:
+        """Camera picture filling the whole canvas (cropped, never stretched)."""
+        target.fill((8, 14, 25))
+        if image is not None:
+            target.blit(bgr_to_surface(cover_resize(image, target.get_size())), (0, 0))
 
-        for enemy in snapshot.enemies:
-            x, y = (int(enemy.position[0]), int(enemy.position[1]))
-            boss = "sovereign" in enemy.kind or "guardian" in enemy.kind
-            radius = 54 if boss else 30
-            pygame.draw.circle(target, (69, 24, 83), (x, y), radius + 7)
-            pygame.draw.circle(target, (190, 69, 155) if boss else (135, 75, 166), (x, y), radius)
-            pygame.draw.circle(target, (245, 216, 253), (x, y), max(6, radius // 4))
-            bar = pygame.Rect(x - radius, y + radius + 10, radius * 2, 7)
-            pygame.draw.rect(target, (25, 25, 31), bar)
-            pygame.draw.rect(target, (236, 83, 109), (bar.x, bar.y, int(bar.width * max(0, enemy.hp) / enemy.max_hp), bar.height))
+    # ---- gameplay (OpenCV look, see battle_view.py) -----------------------------
+    def reset_fx(self) -> None:
+        """Call when a level starts so no particles or banners leak between runs."""
+        self.battle.reset()
 
-        bar_width = 116
-        total = len(snapshot.unlocked_elements) * (bar_width + 10)
-        start = (self.width - total) // 2
-        for index, element in enumerate(snapshot.unlocked_elements):
-            x = start + index * (bar_width + 10)
-            rect = pygame.Rect(x, 645, bar_width, 48)
-            self._panel(target, rect, 215)
-            pygame.draw.rect(target, ELEMENT_COLORS[element], (x + 8, 678, int((bar_width - 16) * snapshot.mana[element] / 100), 7), border_radius=3)
-            self._text(target, element.value.upper(), 16, (rect.centerx, 660), ELEMENT_COLORS[element], True)
-        conv = pygame.Rect(410, 610, 460, 14)
-        pygame.draw.rect(target, (21, 27, 39), conv, border_radius=7)
-        pygame.draw.rect(target, (255, 220, 120), (conv.x, conv.y, int(conv.width * snapshot.convergence / 100), conv.height), border_radius=7)
-        self._text(target, "CONVERGENCE — bring hands together when full", 16, (self.width // 2, 590), (235, 225, 186), True)
+    def update_fx(self, dt: float, snapshot: GameSnapshot, events: Iterable[GameEvent] = (),
+                  frame: GestureFrame | None = None) -> None:
+        """Advance animations and react to this frame's game events. Skip while paused."""
+        self._clock += dt
+        self.battle.update(dt, snapshot, events, frame)
+
+    def draw_gameplay(
+        self,
+        target: pygame.Surface,
+        snapshot: GameSnapshot,
+        camera_surface: pygame.Surface | None = None,
+        frame: GestureFrame | None = None,
+        camera_image: np.ndarray | None = None,
+    ) -> None:
+        """Draw the battle over the camera picture, filling the whole canvas.
+
+        `camera_image` (BGR, straight from OpenCV) is preferred; a pygame surface also works.
+        `frame` must use the same canvas coordinates as the session (see models.scale_frame).
+        """
+        if camera_image is None and camera_surface is not None:
+            camera_image = surface_to_bgr(camera_surface)
+        image = self.battle.render(snapshot, frame, camera_image, target.get_size())
+        target.blit(bgr_to_surface(image), (0, 0))
 
     def draw_overlay(self, target: pygame.Surface, title: str, lines: Iterable[str]) -> None:
         shade = pygame.Surface(target.get_size(), pygame.SRCALPHA)
         shade.fill((0, 0, 0, 175))
         target.blit(shade, (0, 0))
+        tw, th = target.get_size()
+        target = target.subsurface(pygame.Rect((tw - self.width) // 2, (th - self.height) // 2, self.width, self.height).clip(target.get_rect()))
         panel = pygame.Rect(260, 150, 760, 420)
         self._panel(target, panel, 240)
         self._text(target, title, 46, (self.width // 2, 210), (255, 224, 151), True)

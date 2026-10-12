@@ -50,3 +50,45 @@ class GestureFrame:
     timestamp: float
     hands: tuple[HandPose, ...] = ()
     camera_ok: bool = True
+
+
+REFERENCE_SIZE = (1280, 720)
+
+
+def canvas_size_for(window: tuple[int, int], reference: tuple[int, int] = REFERENCE_SIZE) -> tuple[int, int]:
+    """Logical canvas that has the window's aspect ratio and is at least as big as the 1280x720 reference.
+
+    Because the canvas and the window share an aspect ratio, scaling canvas -> window never stretches
+    anything and never leaves black bars.
+    """
+    ww, wh = max(1, window[0]), max(1, window[1])
+    aspect = ww / wh
+    rw, rh = reference
+    if aspect >= rw / rh:
+        return (int(round(rh * aspect)), rh)
+    return (rw, int(round(rw / aspect)))
+
+
+def cover_transform(source: tuple[int, int], target: tuple[int, int]) -> tuple[float, float, float]:
+    """(scale, offset_x, offset_y) that fills `target` with `source`, cropping the overflow (no distortion)."""
+    scale = max(target[0] / source[0], target[1] / source[1])
+    return scale, (target[0] - source[0] * scale) / 2.0, (target[1] - source[1] * scale) / 2.0
+
+
+def scale_frame(frame: GestureFrame, source: tuple[int, int], target: tuple[int, int]) -> GestureFrame:
+    """Map hand positions from camera pixels to the game canvas using the same crop the picture uses."""
+    if source == target or not frame.hands or source[0] <= 0 or source[1] <= 0:
+        return frame
+    scale, ox, oy = cover_transform(source, target)
+    scaled = tuple(
+        HandPose(
+            hand.key,
+            hand.gesture,
+            (hand.center[0] * scale + ox, hand.center[1] * scale + oy),
+            hand.direction,
+            hand.size * scale,
+            hand.confidence,
+        )
+        for hand in frame.hands
+    )
+    return GestureFrame(frame.timestamp, scaled, frame.camera_ok)
