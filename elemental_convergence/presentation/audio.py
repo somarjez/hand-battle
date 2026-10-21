@@ -35,6 +35,7 @@ def synthesize_tone(
 
 # ------------------------------------------------------------------ what plays when
 LOOT_SOUNDS = {"heart": "loot_heart", "regen": "loot_regen", "shield": "loot_shield", "boost": "loot_boost"}
+REACTION_SOUNDS = {"SHOCKED": "reaction_shock", "STEAM": "reaction_steam", "DOUSED": "reaction_steam", "FIRESTORM": "reaction_firestorm"}
 NOTE_SOUNDS = {
     "hazard": "hazard_warning",
     "boss_phase": "boss_phase",
@@ -46,7 +47,7 @@ NOTE_SOUNDS = {
 GAINS = {
     "cast_earth": 0.5, "cast_water": 0.45, "cast_air": 0.4, "cast_fire": 0.45, "cast_lightning": 0.45,
     "orb_block": 0.5, "enemy_defeated": 0.7, "ui_move": 0.5, "ui_select": 0.7, "ui_back": 0.6, "heartbeat": 0.8,
-    "laser_fire": 0.6, "bomb_blast": 0.8, "shield_block": 0.6, "defuse": 0.6, "interrupt": 0.6,
+    "laser_fire": 0.6, "bomb_blast": 0.8, "reaction_shock": 0.8, "reaction_steam": 0.7, "reaction_firestorm": 0.8, "shield_block": 0.6, "defuse": 0.6, "interrupt": 0.6,
 }
 # minimum seconds between two plays of the same effect (stops fast-fire spam)
 MIN_GAP = {
@@ -67,6 +68,10 @@ def sfx_for_event(event: GameEvent) -> list[str]:
             names.append("defuse")
         if data.get("interrupted"):
             names.append("interrupt")
+        for reaction in data.get("reactions", []):
+            sound = REACTION_SOUNDS.get(reaction["name"])
+            if sound and sound not in names:
+                names.append(sound)
         return names
     if kind is GameEventType.ENEMY_DEFEATED:
         return ["boss_defeated" if data.get("boss") else "enemy_defeated"]

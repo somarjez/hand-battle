@@ -279,7 +279,7 @@ def test_codex_tracks_what_you_have_met_and_cleared(app):
     app.model.save = SaveData(prologue_seen=True, completed_levels=("stonewake",), seen_enemies=("shooter",))
     goto(app, SceneId.CODEX)
     seals = app._codex_entries()
-    assert seals[0]["unlocked"] and not seals[1]["unlocked"] and "Orrin" in seals[0]["subtitle"]
+    assert seals[0]["unlocked"] and not seals[1]["unlocked"] and "Maria Makiling" in seals[0]["subtitle"]
     press(app, pygame.K_RIGHT)
     beasts = app._codex_entries()
     assert app.codex_tab == 1 and beasts[0]["unlocked"] and not beasts[1]["unlocked"]

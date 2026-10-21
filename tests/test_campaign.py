@@ -159,7 +159,7 @@ def test_hazards_only_fire_while_a_hand_is_visible_and_on_the_stage_timer():
     assert not any(e.detail == "hazard" for e in run(s, [], 30))
     events = run(s, [hand()], 30)
     hazard = [e for e in events if e.type is GameEventType.COMBAT_FX and e.detail == "hazard"]
-    assert hazard and hazard[0].data["label"] == "TIDAL SURGE!" and s.hazard_timer > 5
+    assert hazard and hazard[0].data["label"] == "RAPIDS SURGE!" and s.hazard_timer > 5
 
 
 def test_hazards_hurt_if_you_stand_in_them():
@@ -197,9 +197,9 @@ def test_a_guardian_opens_a_new_phase_at_two_thirds_and_one_third_health():
 def test_the_boss_intro_and_wave_titles_reach_the_player():
     s = new("eclipse")
     wave = s._wave_started_event("2")
-    assert wave.data["title"] == "Echoes of Veyra"
+    assert wave.data["title"] == "What the Dark Remembers"
     boss = s._wave_started_event("boss")
-    assert boss.data["name"] == "Rift Sovereign" and "alone" in boss.data["line"]
+    assert boss.data["name"] == "Bakunawa" and "sun and the moon" in boss.data["line"]
 
 
 # ------------------------------------------------------------------ combo, score, stars

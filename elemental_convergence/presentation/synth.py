@@ -234,6 +234,22 @@ def _sfx_mono(name: str, rng: np.random.Generator) -> tuple[np.ndarray, float]:
         return _mix(rise * 0.5, np.concatenate((np.zeros(_n(0.2)), _bell(1568, 0.3)))) * 0.7, 0.0
     if name == "loot_mana":
         return _arp([880.0, 1174.7], 0.08, 0.35, 1.3) * 0.6, 0.0
+    if name == "reaction_shock":
+        n = _n(0.34)
+        zap = sweep(2600, 180, 0.34, "square", 0.45) * expdecay(n, 6) * 0.6
+        crackle = (rng.random(n) > 0.975) * rng.uniform(-1.0, 1.0, n) * 0.9
+        thump = sweep(120, 45, 0.34, "sine", 0.5) * expdecay(n, 9) * 0.9
+        return zap + crackle + thump, 0.0
+    if name == "reaction_steam":
+        n = _n(0.55)
+        hiss = highpass(noise(n, rng), 5) * np.sin(np.linspace(0, np.pi, n)) ** 0.8 * 0.8
+        bubble = sweep(700, 220, 0.55, "sine", 0.7) * expdecay(n, 4) * 0.35 * (0.6 + 0.4 * np.sin(2 * np.pi * 14 * _t(n)))
+        return hiss + bubble, 0.0
+    if name == "reaction_firestorm":
+        n = _n(0.7)
+        roar = lowpass(noise(n, rng), 12) * np.sin(np.linspace(0, np.pi, n)) ** 0.6 * 1.7
+        rise = sweep(110, 330, 0.7, "saw", 1.3) * np.sin(np.linspace(0, np.pi, n)) * 0.35
+        return roar + rise, 0.0
     if name == "wave_started":
         a = sweep(196, 196, 0.5, "saw") * envelope(_n(0.5), 0.04, 0.1, 0.7, 0.2)
         b = sweep(294, 294, 0.5, "saw") * envelope(_n(0.5), 0.04, 0.1, 0.7, 0.2)
@@ -264,8 +280,19 @@ def _sfx_mono(name: str, rng: np.random.Generator) -> tuple[np.ndarray, float]:
         rise = sweep(80, 1400, 1.0, "saw", 2.2) * envelope(_n(1.0), 0.05, release=0.05) * 0.4
         riser = np.concatenate((lowpass(noise(_n(1.0), rng), 25) * np.linspace(0.0, 1.0, _n(1.0)) * 1.2, np.zeros(n - _n(1.0))))
         boom = np.concatenate((np.zeros(_n(0.9)), sweep(120, 30, 1.1, "sine", 0.5) * expdecay(_n(1.1), 3.2) * 1.5))
-        shimmer = np.concatenate((np.zeros(_n(0.9)), _arp([523.25, 783.99, 1046.5, 1568.0], 0.08, 1.0, 1.2) * 0.6))
-        return _mix(np.concatenate((rise, np.zeros(n - len(rise)))), riser, boom, shimmer), 0.0
+        pots = np.zeros(n)                                                     # kalampag: a crowd banging pots and pans
+        for _ in range(26):
+            start = _n(0.85 + rng.random() ** 1.3 * 1.1)
+            f = rng.uniform(420, 1500)
+            hit = np.zeros(_n(0.35))
+            t = _t(len(hit))
+            for ratio, amp in ((1.0, 1.0), (2.32, 0.6), (3.97, 0.35)):
+                hit += amp * np.sin(2 * np.pi * f * ratio * t) * np.exp(-t * rng.uniform(14, 26))
+            hit += highpass(noise(len(hit), rng), 4) * np.exp(-t * 60) * 0.5
+            end = min(n, start + len(hit))
+            pots[start:end] += hit[: end - start] * rng.uniform(0.18, 0.4)
+        shimmer = np.concatenate((np.zeros(_n(0.9)), _arp([523.25, 783.99, 1046.5, 1568.0], 0.08, 1.0, 1.2) * 0.5))
+        return _mix(np.concatenate((rise, np.zeros(n - len(rise)))), riser, boom, shimmer, pots), 0.0
     if name == "hazard_warning":
         pulse = tone(440, 0.14, "square") * envelope(_n(0.14), 0.005, release=0.06)
         gap = np.zeros(_n(0.08))
@@ -288,7 +315,7 @@ SFX_NAMES: tuple[str, ...] = (
     "ui_move", "ui_select", "ui_back", "ui_error",
     "cast_earth", "cast_water", "cast_air", "cast_fire", "cast_lightning",
     "enemy_defeated", "boss_defeated", "player_hit", "life_lost", "shield_block", "orb_block", "defuse",
-    "interrupt", "bomb_blast", "laser_fire", "loot_heart", "loot_regen", "loot_shield", "loot_boost", "loot_mana",
+    "interrupt", "bomb_blast", "laser_fire", "reaction_shock", "reaction_steam", "reaction_firestorm", "loot_heart", "loot_regen", "loot_shield", "loot_boost", "loot_mana",
     "wave_started", "wave_complete", "boss_incoming", "boss_phase", "level_complete", "level_failed",
     "convergence_ready", "convergence_started", "hazard_warning", "heartbeat",
 )
@@ -311,6 +338,9 @@ MODES = {
     "phrygian": (0, 1, 3, 5, 7, 8, 10),
     "harmonic": (0, 2, 3, 5, 7, 8, 11),
     "major": (0, 2, 4, 5, 7, 9, 11),
+    "slendro": (0, 2, 5, 7, 9),             # five-note scales, as in the gong-ensemble music of the islands
+    "pent_minor": (0, 3, 5, 7, 10),
+    "pent_major": (0, 2, 4, 7, 9),
 }
 
 
@@ -326,28 +356,45 @@ class MusicSpec:
     arp_step: int = 2              # 1 = sixteenths, 2 = eighths
     melody: float = 0.0
     drums: int = 0                 # 0 none, 1 soft, 2 steady, 3 driving
-    lead_wave: str = "tri"
+    lead_wave: str = "tri"         # tri | saw | flute | gong
+    arp_voice: str = ""            # "" picks by mode; or bell | pluck | gong
+    dabakan: bool = False          # hand-drum hits instead of a synth kick
     loop: bool = True
     gain: float = 0.7
 
 
 MUSIC_SPECS: dict[str, MusicSpec] = {
-    "menu": MusicSpec(220.0, "minor", 72, (0, 5, 3, 4, 0, 5, 3, 6), pad=0.6, arp=0.35, arp_step=2, melody=0.45, drums=0),
-    "stonewake": MusicSpec(146.83, "phrygian", 84, (0, 0, 5, 4, 0, 0, 3, 4), pad=0.55, bass=0.7, arp=0.0, melody=0.4, drums=2, lead_wave="saw"),
-    "tidelost": MusicSpec(164.81, "dorian", 96, (0, 3, 4, 0, 5, 3, 4, 2), pad=0.5, bass=0.5, arp=0.5, arp_step=2, melody=0.4, drums=1),
-    "skyglass": MusicSpec(196.0, "lydian", 108, (0, 1, 4, 0, 5, 1, 4, 3), pad=0.45, bass=0.45, arp=0.5, arp_step=1, melody=0.45, drums=2),
-    "cinderforge": MusicSpec(130.81, "phrygian", 120, (0, 0, 1, 0, 5, 4, 1, 0), pad=0.35, bass=0.8, arp=0.3, arp_step=1, melody=0.5, drums=3, lead_wave="saw"),
-    "eclipse": MusicSpec(92.5, "minor", 100, (0, 5, 3, 4, 0, 6, 5, 4), pad=0.7, bass=0.7, arp=0.4, arp_step=2, melody=0.4, drums=2, lead_wave="saw"),
-    "boss": MusicSpec(110.0, "harmonic", 142, (0, 0, 5, 4, 0, 0, 5, 6), pad=0.4, bass=0.9, arp=0.5, arp_step=1, melody=0.6, drums=3, lead_wave="saw"),
-    "victory": MusicSpec(261.63, "major", 112, (0, 4), pad=0.6, arp=0.6, arp_step=2, melody=0.7, drums=0, loop=False),
-    "defeat": MusicSpec(196.0, "minor", 76, (0, 5), pad=0.7, arp=0.0, melody=0.5, drums=0, loop=False),
+    # the title: a flute over soft gongs, like a house at night waiting for dawn
+    "menu": MusicSpec(220.0, "slendro", 66, (0, 3, 1, 4, 0, 3, 2, 4), pad=0.55, arp=0.4, arp_step=2, melody=0.6,
+                      drums=0, lead_wave="flute", arp_voice="gong"),
+    # Mount Makiling: low drums, a deep drone, the flute calling through trees
+    "stonewake": MusicSpec(146.83, "pent_minor", 78, (0, 0, 3, 2, 0, 0, 4, 2), pad=0.6, bass=0.7, melody=0.6, drums=2,
+                           lead_wave="flute", dabakan=True),
+    # Pagsanjan: water-bright gongs running over a slow pulse
+    "tidelost": MusicSpec(164.81, "slendro", 92, (0, 2, 4, 1, 3, 2, 4, 0), pad=0.45, bass=0.45, arp=0.55, arp_step=2, melody=0.5,
+                          drums=1, lead_wave="flute", arp_voice="gong", dabakan=True),
+    # Batanes: open and airy, fast shimmer, wind in the flute
+    "skyglass": MusicSpec(196.0, "pent_major", 104, (0, 1, 3, 0, 4, 1, 3, 2), pad=0.4, bass=0.4, arp=0.5, arp_step=1, melody=0.55,
+                          drums=2, lead_wave="flute", arp_voice="bell", dabakan=True),
+    # Taal: driving drums and struck gongs
+    "cinderforge": MusicSpec(130.81, "phrygian", 120, (0, 0, 1, 0, 5, 4, 1, 0), pad=0.35, bass=0.8, arp=0.3, arp_step=1,
+                             melody=0.6, drums=3, lead_wave="gong", dabakan=True),
+    # the dragon's mouth: slow, heavy, dark
+    "eclipse": MusicSpec(92.5, "pent_minor", 90, (0, 3, 2, 4, 0, 3, 1, 4), pad=0.75, bass=0.7, arp=0.4, arp_step=2, melody=0.55,
+                         drums=2, lead_wave="gong", arp_voice="gong", dabakan=True),
+    "boss": MusicSpec(110.0, "harmonic", 142, (0, 0, 5, 4, 0, 0, 5, 6), pad=0.4, bass=0.9, arp=0.5, arp_step=1, melody=0.6,
+                      drums=3, lead_wave="saw", dabakan=True),
+    "victory": MusicSpec(261.63, "pent_major", 112, (0, 3), pad=0.6, arp=0.6, arp_step=2, melody=0.7, drums=0,
+                         lead_wave="flute", arp_voice="gong", loop=False),
+    "defeat": MusicSpec(196.0, "pent_minor", 76, (0, 3), pad=0.7, arp=0.0, melody=0.5, drums=0, lead_wave="flute", loop=False),
 }
 MUSIC_NAMES: tuple[str, ...] = tuple(MUSIC_SPECS)
 
 
 def _degree_freq(spec: MusicSpec, degree: int, octave: int = 0) -> float:
     scale = MODES[spec.mode]
-    semis = scale[degree % 7] + 12 * (degree // 7) + 12 * octave
+    n = len(scale)
+    semis = scale[degree % n] + 12 * (degree // n) + 12 * octave
     return _pitch(spec.root, semis)
 
 
@@ -404,6 +451,35 @@ def _lead_voice(freq: float, seconds: float, wave: str) -> np.ndarray:
     return sig * envelope(n, 0.02, 0.1, 0.7, min(0.3, seconds * 0.5)) * 0.6
 
 
+def _gong(freq: float, seconds: float, strike: float = 1.0) -> np.ndarray:
+    """A struck bossed gong: inharmonic partials with a long shimmering tail."""
+    n = _n(seconds)
+    t = _t(n)
+    out = np.zeros(n)
+    for ratio, amp, decay in ((1.0, 1.0, 2.2), (1.52, 0.55, 3.0), (2.12, 0.4, 4.2), (2.74, 0.26, 5.5), (3.9, 0.12, 8.0)):
+        out += amp * np.sin(2 * np.pi * freq * ratio * t + 0.4 * np.sin(2 * np.pi * 5 * t)) * np.exp(-t * decay)
+    return out * envelope(n, 0.004, release=min(0.4, seconds * 0.3)) * 0.55 * strike
+
+
+def _flute(freq: float, seconds: float, rng_seed: int = 0) -> np.ndarray:
+    """A breathy bamboo flute: a soft sine with a little air and a gentle vibrato."""
+    n = _n(seconds)
+    t = _t(n)
+    vib = 1.0 + 0.006 * np.sin(2 * np.pi * 5.2 * t) * np.minimum(1.0, t * 3)
+    phase = np.cumsum(freq * vib) / SR
+    tone_ = np.sin(2 * np.pi * phase) + 0.18 * np.sin(4 * np.pi * phase) + 0.06 * np.sin(6 * np.pi * phase)
+    air = lowpass(np.random.default_rng(rng_seed + int(freq)).uniform(-1, 1, n), 5) * 0.12
+    return (tone_ + air) * envelope(n, 0.05, 0.1, 0.8, min(0.35, seconds * 0.5)) * 0.55
+
+
+def _dabakan(rng: np.random.Generator, low: bool = True) -> np.ndarray:
+    """A skin drum: a quick pitch drop with a slap of air."""
+    n = _n(0.3)
+    body = sweep(210 if low else 330, 95 if low else 160, 0.3, "sine", 0.4) * expdecay(n, 9)
+    slap = highpass(noise(n, rng), 6) * expdecay(n, 40) * 0.5
+    return (body + slap) * 0.95 * envelope(n, 0.002, release=0.02)
+
+
 def _kick() -> np.ndarray:
     n = _n(0.28)
     return sweep(140, 42, 0.28, "sine", 0.5) * expdecay(n, 11) * 1.1
@@ -411,18 +487,19 @@ def _kick() -> np.ndarray:
 
 def _snare(rng: np.random.Generator) -> np.ndarray:
     n = _n(0.2)
-    return (highpass(noise(n, rng), 5) * expdecay(n, 22) * 0.7 + tone(190, 0.2, "tri") * expdecay(n, 25) * 0.4)
+    return (highpass(noise(n, rng), 5) * expdecay(n, 22) * 0.7 + tone(190, 0.2, "tri") * expdecay(n, 25) * 0.4) * envelope(n, 0.002, release=0.02)
 
 
 def _hat(rng: np.random.Generator, open_: bool = False) -> np.ndarray:
     n = _n(0.12 if open_ else 0.05)
-    return highpass(noise(n, rng), 3) * expdecay(n, 14 if open_ else 55) * 0.25
+    return highpass(noise(n, rng), 3) * expdecay(n, 14 if open_ else 55) * 0.25 * envelope(n, 0.002, release=0.01)
 
 
 def _melody_notes(spec: MusicSpec, rng: np.random.Generator, bars: int) -> list[tuple[float, float, int]]:
+    size = len(MODES[spec.mode])
     """A repeating two-bar motif: (beat offset, length in beats, scale degree)."""
     notes: list[tuple[float, float, int]] = []
-    degree = 7                                               # start an octave up
+    degree = size                                            # start an octave up
     motif_seed = int(rng.integers(1 << 30))
     for bar in range(0, bars, 2):
         motif_rng = np.random.default_rng(motif_seed)         # the same motif every two bars
@@ -433,9 +510,9 @@ def _melody_notes(spec: MusicSpec, rng: np.random.Generator, bars: int) -> list[
                 length = 8.0 - beat
             if motif_rng.random() < 0.82:
                 chord_root = spec.progression[(bar + int(beat // 4)) % len(spec.progression)]
-                degree = int(np.clip(degree + motif_rng.choice([-2, -1, -1, 0, 1, 1, 2]), 4, 11))
+                degree = int(np.clip(degree + motif_rng.choice([-2, -1, -1, 0, 1, 1, 2]), size - 3, size + 4))
                 if motif_rng.random() < 0.35:                # land on a chord tone now and then
-                    degree = int(np.clip(chord_root + 7 + int(motif_rng.choice([0, 2, 4])), 4, 11))
+                    degree = int(np.clip(chord_root + size + int(motif_rng.choice([0, 2, 4])), size - 3, size + 4))
                 notes.append((bar * 4 + beat, length, degree))
             beat += length
     return notes
@@ -468,18 +545,24 @@ def make_music(name: str) -> np.ndarray:
             sixteenth = bar_len / 16
             pattern = (0, 1, 2, 1, 2, 1, 0, 1)
             for i in range(0, 16, spec.arp_step):
-                degree = chord[pattern[(i // spec.arp_step) % len(pattern)] % 3] + 7
+                degree = chord[pattern[(i // spec.arp_step) % len(pattern)] % 3] + len(MODES[spec.mode])
                 f = _degree_freq(spec, degree, 0)
-                kind = "bell" if spec.mode in ("dorian", "lydian", "major") else "pluck"
-                note = _bell(f, 0.7, 0.7) * 0.5 if kind == "bell" else _pluck(f, 0.45, spec.lead_wave if spec.lead_wave == "tri" else "tri")
+                kind = spec.arp_voice or ("bell" if spec.mode in ("dorian", "lydian", "major", "pent_major", "slendro") else "pluck")
+                if kind == "gong":
+                    note = _gong(f * 2, 0.55) * 0.9
+                elif kind == "bell":
+                    note = _bell(f, 0.7, 0.7) * 0.5
+                else:
+                    note = _pluck(f, 0.45, "tri")
                 track.add(start + i * sixteenth, note * spec.arp * 0.45, -0.4 + 0.8 * ((i // spec.arp_step) % 2))
         if spec.drums:                                        # drums
             for b in range(4):
                 bt = start + b * beat
                 if spec.drums >= 3 or b in (0, 2) or (spec.drums == 2 and b == 3 and bar % 2 == 1):
-                    track.add(bt, _kick() * (0.55 if spec.drums == 1 else 0.7), 0.0)
+                    hit = _dabakan(rng, True) if spec.dabakan else _kick()
+                    track.add(bt, hit * (0.55 if spec.drums == 1 else 0.7), 0.0)
                 if b in (1, 3) and spec.drums >= 2:
-                    track.add(bt, _snare(rng) * 0.55, 0.1)
+                    track.add(bt, (_dabakan(rng, False) * 0.7 if spec.dabakan else _snare(rng) * 0.55), 0.1)
                 hats = 2 if spec.drums >= 2 else 1
                 for h in range(hats):
                     track.add(bt + h * beat / hats, _hat(rng, open_=(h == 1 and b == 3)) * 0.6, 0.35)
@@ -487,8 +570,14 @@ def make_music(name: str) -> np.ndarray:
     if spec.melody:                                           # a repeating two-bar motif
         for beat_pos, length, degree in _melody_notes(spec, rng, bars):
             f = _degree_freq(spec, degree, 0)
-            voice = _lead_voice(f, length * beat * 1.1, spec.lead_wave) if spec.mode != "dorian" and spec.mode != "lydian" \
-                else _bell(f, max(0.5, length * beat), 0.8) * 0.6
+            if spec.lead_wave == "flute":
+                voice = _flute(f, max(0.35, length * beat * 1.1))
+            elif spec.lead_wave == "gong":
+                voice = _gong(f, max(0.8, length * beat * 1.6)) * 1.3
+            elif spec.mode in ("dorian", "lydian"):
+                voice = _bell(f, max(0.5, length * beat), 0.8) * 0.6
+            else:
+                voice = _lead_voice(f, length * beat * 1.1, spec.lead_wave)
             track.add(beat_pos * beat, voice * spec.melody * 0.6, 0.25)
 
     out = track.buf

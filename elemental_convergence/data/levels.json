@@ -1,39 +1,40 @@
 [
  {
   "id": "stonewake",
-  "title": "Stonewake Sanctuary",
-  "subtitle": "The Seal of Stone",
-  "keeper": "Orrin the Unmoving",
+  "title": "Mount Makiling",
+  "subtitle": "Sinag ng Lupa: the Ray of Earth",
+  "keeper": "Maria Makiling",
   "unlock": "earth",
   "intro": [
-   "Stonewake was built by the first Wardens to teach patience.",
-   "Orrin the Unmoving kept the Stone Seal here. The shadows have buried him alive.",
-   "Make a fist and the earth will answer. Stand your ground, Warden."
+   "Mount Makiling looks asleep from Los Baños, but today it is holding its breath.",
+   "Maria Makiling has watched over this mountain since before there were roads. Her rules are simple: take only what you need, and take your trash home.",
+   "The anino, the shadows, did not read the rules. A kapre in the old balete tree has gone wild and is throwing rocks at everybody.",
+   "Make a fist. The ground will listen."
   ],
   "outro": [
-   "The stone remembers your resolve. Somewhere beneath the rubble, Orrin exhales.",
-   "Water calls from the drowned ruins to the east."
+   "Maria Makiling nods once, which from her is a hug.",
+   "'The next ray is downriver, in the gorge. Mang Amado is waiting. He will overcharge you.'"
   ],
   "wave_titles": [
-   "Tremors",
-   "Shadows in the Rubble",
-   "The Long Night",
-   "The Stone Guardian"
+   "Loose Gravel",
+   "Anino in the Undergrowth",
+   "Night Comes Early",
+   "The Kapre of the Balete"
   ],
-  "boss_name": "Stone Guardian",
+  "boss_name": "Kapre of the Balete",
   "boss_lines": {
-   "intro": "Orrin's guardian wakes, twisted by the Rift: STAY... DOWN...",
-   "phase2": "Cracks race across its body, and the ground answers with falling stone.",
-   "phase3": "Its eyes burn red. It will crush anything that stands still!",
-   "defeat": "The Stone Guardian crumbles. The Seal of Stone hums back to life."
+   "intro": "The balete shakes. A kapre climbs down, still smoking his enormous cigar. He does not look friendly.",
+   "phase2": "He swings a whole branch like a bat. The ground starts to give way.",
+   "phase3": "The cigar glows red. He is done warning you.",
+   "defeat": "The kapre sits down hard and coughs, and the shadow slides off him. 'Sorry,' he mutters. 'Bad few days.'"
   },
   "lore": [
-   "Stonewake was raised in a single night by the first Wardens, who believed that patience was the first element.",
-   "Its Seal binds the earth. What is rooted cannot be unmade, and what is unmade can be rooted again."
+   "Mount Makiling, in Laguna, is said to be watched over by Maria Makiling, a diwata who rewards the kind and hides from the greedy.",
+   "A kapre is a giant who lives in big trees, usually seen smoking an enormous cigar. Most of them are harmless. This one is not himself."
   ],
   "hazard": {
    "kind": "rockfall",
-   "label": "FALLING ROCKS!",
+   "label": "LANDSLIDE!",
    "first": 9,
    "interval": 11
   },
@@ -69,39 +70,40 @@
  },
  {
   "id": "tidelost",
-  "title": "Tidelost Ruins",
-  "subtitle": "The Seal of Tide",
-  "keeper": "Sael of the Drowned Bell",
+  "title": "Pagsanjan Gorge",
+  "subtitle": "Sinag ng Tubig: the Ray of Water",
+  "keeper": "Mang Amado",
   "unlock": "water",
   "intro": [
-   "The Tidelost Ruins drown beneath a sky of falling embers.",
-   "Sael's bell has not rung since the Rift, and the water has learned to hold grudges.",
-   "Water does not fight the stone; it flows around it. Flow around danger, Warden."
+   "The Pagsanjan gorge is where boatmen pole tourists up the rapids for a living. Lately the rapids have started pushing back.",
+   "Mang Amado has paddled this river for forty years. He has opinions about the water, and about your life jacket.",
+   "He is holding the second ray in a biscuit tin, and the shadows want the tin.",
+   "Open your hand flat. Water does not fight the rock; it goes around it."
   ],
   "outro": [
-   "The bell rings once, clear and low. The tide remembers its shape.",
-   "Above the clouds, the Skyglass Spires flicker like a signal fire."
+   "Mang Amado hands over the tin. 'No charge,' he says, then adds a boarding fee.",
+   "'The next one is far north, on a windy island with a lighthouse. Bring a jacket.'"
   ],
   "wave_titles": [
-   "Ebb",
-   "Rising Water",
-   "The Drowned Hour",
-   "The Tide Guardian"
+   "Calm Stretch",
+   "Rapids Ahead",
+   "Last Boat Out",
+   "The Siyokoy King"
   ],
-  "boss_name": "Tide Guardian",
+  "boss_name": "Siyokoy King",
   "boss_lines": {
-   "intro": "The Drowned Bell tolls, and something vast surfaces beneath it.",
-   "phase2": "The water around it turns black. Watch for the surge!",
-   "phase3": "It sheds its shell. What is left moves like a flood.",
-   "defeat": "The Tide Guardian dissolves into rain. The bell rings on."
+   "intro": "Something scaly rises from the pool below the falls. The siyokoy are river folk, and this one has had enough of visitors.",
+   "phase2": "He slams the water, and the whole gorge answers.",
+   "phase3": "He dives. Watch where the water moves.",
+   "defeat": "The Siyokoy King slides back under, embarrassed. The river runs clear again."
   },
   "lore": [
-   "The ruins were a harbor city. Its people left the bell behind so that the sea would always know where home was.",
-   "The Tide Seal binds water, and water carries every message the world has ever sent."
+   "Pagsanjan Falls, in Laguna, is reached by narrow boats poled upstream by boatmen who know every rock in the gorge.",
+   "A siyokoy is a scaly water creature of Philippine folklore, usually described as a merman with a bad temper."
   ],
   "hazard": {
    "kind": "tide",
-   "label": "TIDAL SURGE!",
+   "label": "RAPIDS SURGE!",
    "first": 10,
    "interval": 15
   },
@@ -138,39 +140,40 @@
  },
  {
   "id": "skyglass",
-  "title": "Skyglass Spires",
-  "subtitle": "The Seal of Gale",
-  "keeper": "Ysa, Windreader",
+  "title": "Basco Lighthouse",
+  "subtitle": "Sinag ng Hangin: the Ray of Wind",
+  "keeper": "Ate Luz",
   "unlock": "air",
   "intro": [
-   "The Skyglass Spires are broken towers of glass that sing in the wind.",
-   "Ysa Windreader read the sky for a hundred years. Now the sky is reading her.",
-   "Air gives way to nothing and yields to everything. Move lightly, Warden."
+   "Batanes is the northernmost province: green rolling hills, stone houses, and a wind that never takes a day off.",
+   "Ate Luz has kept the Basco lighthouse for most of her life. Luz means light. She says it is a coincidence.",
+   "A typhoon has been parked over the island since the dark began, and the ray is at the top of the tower.",
+   "Close your palm tight. Wind gets through anything that is not braced for it."
   ],
   "outro": [
-   "The storm clears. For the first time in a month, a star is visible.",
-   "Far below, the Cinderforge burns hotter than any forge should."
+   "The lamp turns, and its beam finally reaches the sea.",
+   "Ate Luz points south. 'Taal. Take a hat. No, not for the sun. There is no sun.'"
   ],
   "wave_titles": [
    "First Gust",
    "Crosswinds",
-   "Eye of the Storm",
-   "The Gale Guardian"
+   "The Eye Passes",
+   "The Typhoon"
   ],
-  "boss_name": "Gale Guardian",
+  "boss_name": "The Typhoon",
   "boss_lines": {
-   "intro": "The wind goes silent, which is worse than any storm.",
-   "phase2": "Walls of wind close in. Find the gap!",
-   "phase3": "The silence breaks. Everything it has is coming at once.",
-   "defeat": "The Gale Guardian unravels into a clear sky."
+   "intro": "The clouds close into a ring. The eye of the storm is looking straight at you.",
+   "phase2": "The wind picks up every loose thing on the island and throws it your way.",
+   "phase3": "The eye closes. This is the part where it gets worse.",
+   "defeat": "The storm unwinds into an ordinary, clear sky. Ate Luz switches the lamp on and says, 'Finally.'"
   },
   "lore": [
-   "Ysa taught that the wind has no enemies, only obstacles it has not met yet.",
-   "The Gale Seal binds air. Wherever it is whole, no storm can hold a grudge for long."
+   "The Basco Lighthouse, on Naidi Hills, looks out over Batan Island in Batanes, one of the windiest places in the country.",
+   "About twenty typhoons enter the Philippine area each year. Filipinos call them bagyo, and tie the roof down."
   ],
   "hazard": {
    "kind": "storm",
-   "label": "LIGHTNING STORM!",
+   "label": "LIGHTNING STRIKE!",
    "first": 10,
    "interval": 16
   },
@@ -207,39 +210,40 @@
  },
  {
   "id": "cinderforge",
-  "title": "Cinderforge",
-  "subtitle": "The Seal of Ember",
-  "keeper": "Kael Emberhand",
+  "title": "Taal Island",
+  "subtitle": "Sinag ng Apoy: the Ray of Fire",
+  "keeper": "Tatay Berting",
   "unlock": "fire",
   "intro": [
-   "The Cinderforge never cooled. Kael Emberhand made the Wardens' first blades here.",
-   "The Ember Seal is chained to the forge-heart, and the dark is trying to melt the chains.",
-   "Fire is purpose made visible. Strike before the dark can blink away."
+   "Taal is a volcano on an island in a lake inside an older volcano's crater. You could not make that geography up.",
+   "Tatay Berting farms fish beside it. He has evacuated three times and come back a fourth, because the fish do not feed themselves.",
+   "The fourth ray is at the crater, and the ground there is already warm.",
+   "Two fingers up. Fire answers people who are not afraid of it, or who are afraid and go anyway."
   ],
   "outro": [
-   "Four seals burn as one. The Loom of Dawn shudders and begins to turn.",
-   "The Eclipse Citadel is exposed at last."
+   "The ray flares gold. Four are home.",
+   "The fifth is not a place. It is wherever the dragon went."
   ],
   "wave_titles": [
-   "Sparks",
-   "Slag and Shadow",
-   "The Forge Roars",
-   "The Ember Guardian"
+   "Warm Ground",
+   "Ashfall",
+   "The Lake Boils",
+   "The Blaze of Taal"
   ],
-  "boss_name": "Ember Guardian",
+  "boss_name": "Blaze of Taal",
   "boss_lines": {
-   "intro": "The forge-heart opens like an eye.",
-   "phase2": "Molten rain begins to fall. Keep moving!",
-   "phase3": "It is burning its own seal to keep you out.",
-   "defeat": "The Ember Guardian goes dark. The forge-heart beats steadily again."
+   "intro": "The crater lake boils. The blaze climbs out of it in a shape that looks, rudely, a lot like a face.",
+   "phase2": "Ash begins to fall. It is hot enough to count as rain.",
+   "phase3": "It is burning its own ray to keep you out. Water hurts it most.",
+   "defeat": "The blaze sinks back into the crater and the lake goes quiet. Somewhere a rooster, finally, crows."
   },
   "lore": [
-   "Kael believed that a blade was only a promise somebody had hammered flat.",
-   "The Ember Seal binds fire. Fire does not destroy, it transforms, and the Rift is afraid of that."
+   "Taal Volcano is a small volcano on an island in Taal Lake, in Batangas, and one of the most active in the Philippines.",
+   "Its last major eruption was in January 2020. The families who live around the lake have been rebuilding ever since."
   ],
   "hazard": {
    "kind": "forge",
-   "label": "FORGE FLARE!",
+   "label": "ERUPTION!",
    "first": 8,
    "interval": 12
   },
@@ -277,40 +281,40 @@
  },
  {
   "id": "eclipse",
-  "title": "Eclipse Citadel",
-  "subtitle": "The Rift",
-  "keeper": "Veyra, the Rift Sovereign",
+  "title": "Mouth of the Bakunawa",
+  "subtitle": "Ang Huling Sinag: the Last Ray",
+  "keeper": "Lola Auring",
   "unlock": "lightning",
   "intro": [
-   "Every restored seal points to the same wound in the world.",
-   "At its center waits the Rift Sovereign: Veyra, the Warden who taught you everything.",
-   "She tried to hold all five elements alone. The Rift was the price.",
-   "Master Lightning. Enter Convergence. Bring her home."
+   "There is no place called the Bakunawa's mouth. There is only the dark, and the sound of something very large breathing.",
+   "Four rays hang around you like lanterns. The sun and the moon are in there somewhere, behind the teeth.",
+   "Your hands know the fifth sign, the one Lola Auring never explained: lightning. It is what Bathala sends to things that will not listen.",
+   "And you know what the elders do when the moon is eaten. Press your palms together. Make noise."
   ],
   "outro": [
-   "Veyra kneels, and the Rift closes around her like a held breath.",
-   "Dawn reaches every corner of the realm. The seals are whole."
+   "Dawn. The first one anyone has seen in three days.",
+   "It looks a little crooked, like it has been through something. So have you."
   ],
   "wave_titles": [
-   "The Threshold",
-   "Echoes of Veyra",
-   "The Last Night",
-   "The Rift Sovereign"
+   "The Dark Shore",
+   "What the Dark Remembers",
+   "Three Days Without Dawn",
+   "The Bakunawa"
   ],
-  "boss_name": "Rift Sovereign",
+  "boss_name": "Bakunawa",
   "boss_lines": {
-   "intro": "'I held all five alone, little Warden. Show me you can do better.'",
-   "phase2": "'You have two hands. I only ever trusted one.'",
-   "phase3": "'Then show me the Convergence. Show me what I missed.'",
-   "defeat": "'Two hands... not one. I should have taught you that first.'"
+   "intro": "The Bakunawa uncoils out of the dark with the sun and the moon glowing in its throat.",
+   "phase2": "It roars, and for a second every light in the world flickers.",
+   "phase3": "It is gulping again. Press your palms together. Kalampag!",
+   "defeat": "The Bakunawa chokes. The moon comes out first, then the sun, then a great deal of seawater. Far away someone is banging a pot, and then a hundred someones are."
   },
   "lore": [
-   "Veyra was the strongest Warden of her age. She believed that a single will could carry all five elements.",
-   "She was wrong, but she was brave, and the Rift remembers her as both."
+   "In the old stories the Bakunawa is a sea dragon that swallows the moon, and the elders drive it off by banging pots and pans until it spits the moon back out.",
+   "Some tellings say there were once seven moons. The Bakunawa ate six."
   ],
   "hazard": {
    "kind": "eclipse",
-   "label": "ECLIPSE SURGE!",
+   "label": "ECLIPSE!",
    "first": 8,
    "interval": 14
   },

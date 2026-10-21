@@ -47,6 +47,8 @@ class Settings:
     master_volume: float = 0.8
     music_volume: float = 0.6
     sfx_volume: float = 0.8
+    graphics: str = "auto"            # auto | high | fast
+    narrator: bool = True             # read the story scenes aloud when a voice is available
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "Settings":
@@ -54,6 +56,8 @@ class Settings:
             raise ValueError("unsupported settings version")
         values = {name: raw.get(name, field.default) for name, field in cls.__dataclass_fields__.items()}
         values["version"] = 1
+        if values["graphics"] not in ("auto", "high", "fast"):
+            values["graphics"] = "auto"
         return cls(**values)
 
 

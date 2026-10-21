@@ -12,7 +12,8 @@ import pygame
 from ..models import Element, GestureFrame, REFERENCE_SIZE
 from ..session import GameEvent, GameSnapshot
 from .battle_view import BattleView, cover_resize
-from .effects import RGB, lighten, mix, scale_color
+from . import art
+from .effects import RGB, mix, scale_color
 from .screens import ScreenDrawing
 
 
@@ -50,13 +51,17 @@ class GameRenderer(ScreenDrawing):
         self.width, self.height = logical_size
         self.asset_root = asset_root or Path(__file__).parents[1] / "assets"
         self._fonts: dict[tuple[int, bool], pygame.font.Font] = {}
+        self._scene_bgr: dict[tuple[str, tuple[int, int]], np.ndarray] = {}
+        self._stage = "menu"
         self._backgrounds: dict[str, pygame.Surface | None] = {}
         self._scaled_bg: dict[tuple[str, tuple[int, int]], pygame.Surface] = {}
         self._text_cache: dict[tuple, pygame.Surface] = {}
         self.battle = BattleView()
+        self._portraits: dict = {}
         self._embers = [(random.random(), random.random(), random.uniform(0.02, 0.07), random.uniform(1.5, 3.6), i % 3)
                         for i in range(46)]
         self._clock = 0.0
+        self.fx = self.battle
 
     # ---- accessibility ---------------------------------------------------------
     @property
@@ -75,13 +80,37 @@ class GameRenderer(ScreenDrawing):
     def reduced_shake(self, value: bool) -> None:
         self.battle.reduced_shake = bool(value)
 
+    # ---- creature portraits for the menus --------------------------------------
+    def sprite_surface(self, kind: str, radius: float, phase: float = 0.0, silhouette: bool = False,
+                       height: int | None = None) -> pygame.Surface | None:
+        """A pygame surface of a creature (animated by ``phase`` in cycles), or None for an unknown kind."""
+        book = self.battle.sprites
+        if not book.has(kind):
+            return None
+        n = int(phase * 8) % 8
+        key = (kind, book.bucket(radius), n, silhouette, height)
+        surf = self._portraits.get(key)
+        if surf is None:
+            arr = book.rgba_frame(kind, radius, phase, silhouette)
+            surf = pygame.image.frombuffer(arr.tobytes(), (arr.shape[1], arr.shape[0]), "RGBA")
+            if height and height != surf.get_height():
+                w = max(1, int(surf.get_width() * height / surf.get_height()))
+                surf = pygame.transform.smoothscale(surf, (w, height))
+            self._portraits[key] = surf
+        return surf
+
     # ---- text / fonts ----------------------------------------------------------
     def font(self, size: int, bold: bool = False) -> pygame.font.Font:
         if not pygame.font.get_init():
             pygame.font.init()
         key = (size, bold)
         if key not in self._fonts:
-            self._fonts[key] = pygame.font.SysFont("segoeui", size, bold=bold)
+            fonts = self.asset_root / "fonts"
+            path = fonts / ("AlegreyaSC-Bold.ttf" if bold else "Alegreya-Variable.ttf")
+            try:                                          # the bundled Alegreya; Alegreya reads small, so scale it up a little
+                self._fonts[key] = pygame.font.Font(str(path), int(size * 1.14))
+            except (FileNotFoundError, pygame.error):
+                self._fonts[key] = pygame.font.SysFont("segoeui", size, bold=bold)
         return self._fonts[key]
 
     def _text(self, target, text: str, size: int, pos, color=(238, 244, 248), center=False,
@@ -110,40 +139,38 @@ class GameRenderer(ScreenDrawing):
 
     # ---- backgrounds -----------------------------------------------------------
     def _background(self, target: pygame.Surface, name: str = "menu") -> None:
-        """Fill the whole canvas with the stage image (cropped to fit, never stretched)."""
-        cached = self._backgrounds.get(name)
-        if name not in self._backgrounds:
-            path = self.asset_root / "images" / f"{name}.png"
-            if not path.exists():
-                path = self.asset_root / "images" / "menu.png"
-            try:
-                cached = pygame.image.load(path).convert()
-            except (FileNotFoundError, pygame.error):
-                cached = None
-            self._backgrounds[name] = cached
+        """Paint the stage scene over the whole canvas. Drop a PNG in assets/images/override/<stage>.png to replace one."""
+        self._stage = name
         size = target.get_size()
-        if cached is not None:
+        override = self.asset_root / "images" / "override" / f"{name}.png"
+        if override.exists():
             key = (name, size)
             scaled = self._scaled_bg.get(key)
             if scaled is None:
-                scale = max(size[0] / cached.get_width(), size[1] / cached.get_height())
-                big = pygame.transform.smoothscale(cached, (max(size[0], int(cached.get_width() * scale)),
-                                                            max(size[1], int(cached.get_height() * scale))))
-                scaled = big.subsurface(pygame.Rect((big.get_width() - size[0]) // 2,
-                                                    (big.get_height() - size[1]) // 2, *size)).copy()
-                self._scaled_bg[key] = scaled
-            target.blit(scaled, (0, 0))
-        else:
-            top, bottom = (8, 15, 31), (26, 46, 63)
-            for y in range(size[1]):
-                ratio = y / max(1, size[1] - 1)
-                color = tuple(int(a + (b - a) * ratio) for a, b in zip(top, bottom))
-                pygame.draw.line(target, color, (0, y), (size[0], y))
-        tint = LEVEL_TINT.get(name)
-        if tint is not None:                                  # each stage gets its own colour grade
-            wash = pygame.Surface(size, pygame.SRCALPHA)
-            wash.fill((*tint, 46))
-            target.blit(wash, (0, 0))
+                try:
+                    image = pygame.image.load(override)
+                    if pygame.display.get_surface() is not None:
+                        image = image.convert()
+                except (pygame.error, FileNotFoundError):
+                    image = None
+                if image is not None:
+                    k = max(size[0] / image.get_width(), size[1] / image.get_height())
+                    big = pygame.transform.smoothscale(image, (max(size[0], int(image.get_width() * k)), max(size[1], int(image.get_height() * k))))
+                    scaled = big.subsurface(pygame.Rect((big.get_width() - size[0]) // 2, (big.get_height() - size[1]) // 2, *size)).copy()
+                    self._scaled_bg[key] = scaled
+            if scaled is not None:
+                target.blit(scaled, (0, 0))
+                return
+        target.blit(art.stage_scene(name, size), (0, 0))
+
+    def stage_backdrop(self, stage: str, size: tuple[int, int]) -> np.ndarray:
+        """The stage scene as a BGR image, for play without a camera."""
+        key = (stage, size)
+        image = self._scene_bgr.get(key)
+        if image is None:
+            image = surface_to_bgr(art.stage_scene(stage, size))
+            self._scene_bgr[key] = image
+        return image
 
     def _ui(self, target: pygame.Surface, name: str) -> pygame.Surface:
         """Paint the background over the whole canvas and return the centred 1280x720 area for UI."""
@@ -153,20 +180,11 @@ class GameRenderer(ScreenDrawing):
         return target.subsurface(rect)
 
     def _draw_embers(self, target: pygame.Surface, tint: RGB | None = None) -> None:
-        """Slowly rising embers: pure function of time, so menus feel alive without any state."""
-        w, h = target.get_size()
-        for i, (sx, sy, speed, size, kind) in enumerate(self._embers):
-            x = (sx * w + math.sin(self._clock * 0.6 + i) * 26) % w
-            y = h - ((self._clock * speed * h + sy * h) % h)
-            base = tint or ((255, 170, 80), (130, 200, 255), (255, 236, 170))[kind]
-            fade = 0.35 + 0.65 * math.sin((y / h) * math.pi)
-            pygame.draw.circle(target, scale_color(base, fade), (int(x), int(y)), max(1, int(size)))
+        """Ambient motion for the current stage: fireflies, a sweeping lamp, rising embers."""
+        art.animate(self._stage, target, self._clock)
 
     def _panel(self, target, rect, alpha=205):
-        panel = pygame.Surface(rect.size, pygame.SRCALPHA)
-        panel.fill((8, 14, 26, alpha))
-        pygame.draw.rect(panel, (110, 154, 181, 130), panel.get_rect(), 2, border_radius=16)
-        target.blit(panel, rect)
+        art.draw_panel(target, rect, alpha)
 
     # ---- menu / story / calibration -------------------------------------------
     def draw_menu(self, target: pygame.Surface, items: list[str], selected: int) -> list[pygame.Rect]:
@@ -207,8 +225,7 @@ class GameRenderer(ScreenDrawing):
         veil = pygame.Surface(full.get_size(), pygame.SRCALPHA)
         veil.fill((3, 7, 15, 115))
         full.blit(veil, (0, 0))
-        tint = LEVEL_TINT.get(stage)
-        self._draw_embers(full, lighten(tint, 0.45) if tint else None)
+        self._draw_embers(full)
         panel = pygame.Rect(110, 390, 1060, 245)
         self._panel(target, panel, 225)
         self._text(target, title, 38, (150, 425), (255, 221, 145))
@@ -279,6 +296,8 @@ class GameRenderer(ScreenDrawing):
         """
         if camera_image is None and camera_surface is not None:
             camera_image = surface_to_bgr(camera_surface)
+        if camera_image is None:
+            camera_image = self.stage_backdrop(snapshot.level_id, target.get_size())
         image = self.battle.render(snapshot, frame, camera_image, target.get_size())
         target.blit(bgr_to_surface(image), (0, 0))
 

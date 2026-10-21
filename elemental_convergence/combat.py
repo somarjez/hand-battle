@@ -79,27 +79,27 @@ ENEMY_KINDS: dict[str, KindInfo] = {
 
 BOSS_KINDS: dict[str, KindInfo] = {
     "stone_guardian": KindInfo(
-        "STONE GUARDIAN", (112, 78, 52), (230, 170, 100),
+        "KAPRE OF THE BALETE", (112, 78, 52), (230, 170, 100),
         ("spread", "orb", "dash", "ring", "summon", "burst"),
         radius=(100, 100), speed=0.6, boss=True, minions=("shooter",),
     ),
     "tide_guardian": KindInfo(
-        "TIDE GUARDIAN", (36, 84, 150), (110, 200, 255),
+        "SIYOKOY KING", (36, 84, 150), (110, 200, 255),
         ("spread", "laser", "bomb", "homing", "summon", "ring"),
         radius=(100, 100), speed=0.6, boss=True, minions=("sniper",),
     ),
     "gale_guardian": KindInfo(
-        "GALE GUARDIAN", (110, 150, 150), (225, 255, 245),
+        "THE TYPHOON", (110, 150, 150), (225, 255, 245),
         ("wall", "ring", "homing", "burst", "spread", "summon"),
         radius=(100, 100), speed=0.6, boss=True, minions=("caster",),
     ),
     "ember_guardian": KindInfo(
-        "EMBER GUARDIAN", (156, 54, 28), (255, 150, 60),
+        "BLAZE OF TAAL", (156, 54, 28), (255, 150, 60),
         ("spiral", "sweep", "blink", "bomb", "cross", "summon"),
         radius=(102, 102), speed=0.6, boss=True, minions=("spinner",),
     ),
     "rift_sovereign": KindInfo(
-        "RIFT SOVEREIGN", (56, 22, 98), (255, 120, 220),
+        "BAKUNAWA", (56, 22, 98), (255, 120, 220),
         BOSS_ATTACKS, radius=(108, 108), speed=0.6, boss=True,
         minions=("shooter", "sniper", "caster"),
     ),
@@ -109,6 +109,29 @@ _FALLBACK_BOSS = KindInfo(
     "GUARDIAN", (70, 30, 110), (230, 120, 200), BOSS_ATTACKS,
     radius=(100, 100), speed=0.6, boss=True, minions=("shooter",),
 )
+
+
+# Elemental weaknesses. A weak hit does WEAK_MULT damage, a resisted one RESIST_MULT.
+WEAK_MULT = 1.4
+RESIST_MULT = 0.7
+WEAKNESS: dict[str, str] = {
+    "shooter": "air", "charger": "water", "sniper": "earth", "gunner": "lightning", "bomber": "water",
+    "caster": "earth", "spinner": "fire", "sweeper": "water", "blinker": "fire",
+    "stone_guardian": "fire", "tide_guardian": "lightning", "gale_guardian": "earth", "ember_guardian": "water",
+}
+RESISTANCE: dict[str, str] = {
+    "charger": "fire", "sniper": "air", "gunner": "earth", "bomber": "fire", "caster": "water",
+    "spinner": "air", "sweeper": "lightning", "blinker": "earth",
+    "stone_guardian": "earth", "tide_guardian": "water", "gale_guardian": "air", "ember_guardian": "fire",
+}
+
+
+def element_multiplier(kind: str, element: str | None) -> float:
+    if element and WEAKNESS.get(kind) == element:
+        return WEAK_MULT
+    if element and RESISTANCE.get(kind) == element:
+        return RESIST_MULT
+    return 1.0
 
 
 def kind_info(kind: str) -> KindInfo:
@@ -153,6 +176,10 @@ class Enemy:
     boss: bool = False
     elite: bool = False
     phase: int = 1
+    soaked: float = 0.0        # seconds left of each status effect
+    burning: float = 0.0
+    stun: float = 0.0
+    slow: float = 0.0
 
     @property
     def enraged(self) -> bool:
@@ -173,6 +200,7 @@ class Shot:
     wall: bool = False
     tint: RGB = (255, 80, 80)
     ph: float = 0.0
+    style: str = ""           # "tide" for the water-wall hazard; "" otherwise
 
 
 @dataclass(slots=True)
@@ -188,6 +216,7 @@ class Laser:
     warn: float = LASER_WARN
     fire: float = LASER_FIRE
     tint: RGB = (255, 90, 90)
+    bolt: bool = False        # True for the stage's lightning-strike hazard
     # geometry, refreshed every update
     ox: float = 0.0
     oy: float = 0.0
@@ -207,6 +236,7 @@ class Bomb:
     fuse: float
     r: float
     blown: bool = False
+    kind: str = "bomb"        # "bomb" (enemy), "rock" (landslide hazard) or "lava" (eruption hazard)
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,6 +339,8 @@ class CombatField:
             e.age += dt
             e.flash = max(0.0, e.flash - dt)
             e.blink = max(0.0, e.blink - dt)
+            if e.stun > 0:                                  # stunned enemies stand frozen
+                continue
             if e.wind > 0:                                  # charger winds up: stands still
                 e.wind -= dt
                 if e.wind <= 0:
@@ -321,7 +353,7 @@ class CombatField:
                 e.y = min(max(e.y + e.cdir[1] * DASH_SPEED * dt, m), h - m)
                 continue
             info = kind_info(e.kind)
-            mult = (1.7 if e.enraged else 1.0) * (1.0 + 0.15 * (tempo - 1.0))
+            mult = (1.7 if e.enraged else 1.0) * (1.0 + 0.15 * (tempo - 1.0)) * (0.55 if e.slow > 0 else 1.0)
             e.ph += 3.6 * dt
             if rng.random() < 0.9 * dt:
                 e.vx = rng.uniform(-60, 60) * info.speed
@@ -371,9 +403,9 @@ class CombatField:
                     sp["ang"] += sp["dir"] * 0.34
                 if sp["left"] <= 0:
                     e.spiral = None
-            if e.wind > 0 or e.dash > 0:
+            if e.wind > 0 or e.dash > 0 or e.stun > 0:
                 continue
-            e.atk -= dt * (1.5 if e.enraged else 1.0) * (1.0 + 0.2 * (tempo - 1.0))
+            e.atk -= dt * (1.5 if e.enraged else 1.0) * (1.0 + 0.2 * (tempo - 1.0)) * (0.6 if e.slow > 0 else 1.0)
             if e.atk > 0:
                 continue
             info = kind_info(e.kind)
@@ -392,9 +424,10 @@ class CombatField:
             self.shots.append(Shot(e.x, e.y, dd[0] * spd, dd[1] * spd, spd, r, dmg, life,
                                    home=home, wall=wall, tint=tint, ph=self.rng.uniform(0, 6.28)))
 
-    def _beam(self, origin: Vec, direction: Vec, warn: float = 1.8, fire: float = LASER_FIRE) -> None:
+    def _beam(self, origin: Vec, direction: Vec, warn: float = 1.8, fire: float = LASER_FIRE,
+              bolt: bool = False) -> None:
         self.lasers.append(Laser(None, fixed_origin=origin, fixed_dir=direction, warn=warn, fire=fire,
-                                 tint=(255, 90, 90)))
+                                 tint=(255, 90, 90), bolt=bolt))
 
     def _do_attack(self, e: Enemy, attack: str, enemies: list[Enemy], zones: Sequence[Zone],
                    dmg_mult: float, tempo: float) -> None:
@@ -501,7 +534,7 @@ class CombatField:
             self.note("summon", x=e.x, y=e.y, kind=e.kind)
         self.note("attack", attack=attack, x=e.x, y=e.y, kind=e.kind, id=e.id)
 
-    def _make_wall(self, tgt: Vec, tint: RGB, spd: float, dmg_mult: float) -> None:
+    def _make_wall(self, tgt: Vec, tint: RGB, spd: float, dmg_mult: float, style: str = "") -> None:
         w, h = self.size
         rng = self.rng
         side = rng.choice(("top", "bottom", "left", "right"))
@@ -518,7 +551,7 @@ class CombatField:
                 "left": (-20.0, pos, spd, 0.0), "right": (w + 20.0, pos, -spd, 0.0),
             }[side]
             self.shots.append(Shot(x, y, vx, vy, spd, 12.0, RING_DAMAGE * dmg_mult, 14.0,
-                                   wall=True, tint=tint, ph=rng.uniform(0, 6.28)))
+                                   wall=True, tint=tint, ph=rng.uniform(0, 6.28), style=style))
 
     def hazard(self, kind: str, zones: Sequence[Zone], dmg_mult: float = 1.0) -> str:
         """A stage hazard: not tied to any enemy, always telegraphed. Returns the pattern that was used."""
@@ -534,19 +567,19 @@ class CombatField:
         if kind == "rockfall":
             for k in range(3):
                 bx, by = (zx, zy) if k == 0 else (rng.uniform(0.1 * w, 0.9 * w), rng.uniform(0.25 * h, 0.85 * h))
-                self.bombs.append(Bomb(min(max(bx, 40.0), w - 40.0), min(max(by, 40.0), h - 40.0), -k * 0.25, 1.3, 95.0))
+                self.bombs.append(Bomb(min(max(bx, 40.0), w - 40.0), min(max(by, 40.0), h - 40.0), -k * 0.25, 1.3, 95.0, kind="rock"))
         elif kind == "forge":
             for k in range(5):
                 a = rng.uniform(0, 2 * math.pi)
                 dist = 0.0 if k == 0 else rng.uniform(90, 260)
                 bx, by = zx + math.cos(a) * dist, zy + math.sin(a) * dist
-                self.bombs.append(Bomb(min(max(bx, 40.0), w - 40.0), min(max(by, 40.0), h - 40.0), -k * 0.15, 1.4, 90.0))
+                self.bombs.append(Bomb(min(max(bx, 40.0), w - 40.0), min(max(by, 40.0), h - 40.0), -k * 0.15, 1.4, 90.0, kind="lava"))
         elif kind == "tide":
-            self._make_wall((zx, zy), (110, 200, 255), 150.0, dmg_mult)
+            self._make_wall((zx, zy), (110, 200, 255), 150.0, dmg_mult, style="tide")
         else:                                               # storm: beams through the arena
             for x in (zx, zx + rng.choice((-1, 1)) * rng.uniform(220, 380)):
-                self._beam((min(max(x, 40.0), w - 40.0), -40.0), (0.0, 1.0), warn=1.6)
-            self._beam((-40.0, min(max(zy + rng.uniform(-120, 120), 60.0), h - 60.0)), (1.0, 0.0), warn=1.6)
+                self._beam((min(max(x, 40.0), w - 40.0), -40.0), (0.0, 1.0), warn=1.6, bolt=True)
+            self._beam((-40.0, min(max(zy + rng.uniform(-120, 120), 60.0), h - 60.0)), (1.0, 0.0), warn=1.6, bolt=True)
         self.note("hazard_pattern", kind=kind)         # the session announces it (with the stage's own label)
         return kind
 

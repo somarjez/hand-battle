@@ -7,7 +7,7 @@ import random
 from typing import Any, Mapping
 
 from . import combat
-from .combat import CombatField, Enemy, Hit, hand_zone_radius, kind_info
+from .combat import WEAKNESS, CombatField, Enemy, Hit, element_multiplier, hand_zone_radius, kind_info
 from .content import LevelDefinition, Objective
 from .models import DIFFICULTIES, Difficulty, Element, GestureFrame
 from .persistence import SaveData
@@ -63,6 +63,8 @@ class EnemySnapshot:
     spiral: bool = False
     elite: bool = False
     phase: int = 1
+    status: tuple[str, ...] = ()
+    weak: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +76,9 @@ class ShotSnapshot:
     home: bool = False
     wall: bool = False
     phase: float = 0.0
+    vx: float = 0.0
+    vy: float = 0.0
+    style: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,6 +91,7 @@ class LaserSnapshot:
     firing: bool
     width: float = 1.0
     t: float = 0.0
+    hazard: bool = False       # a stage-hazard lightning strike rather than an enemy's beam
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +101,7 @@ class BombSnapshot:
     r: float
     progress: float            # 0..1 fuse burning, then 0..1 through the blast
     blasting: bool = False
+    kind: str = "bomb"         # bomb | rock | lava
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,6 +203,17 @@ BOSS_HEAL = 50.0           # health back for defeating a guardian
 # Convergence ultimate: hits everything on screen, and everything that arrives while it lasts.
 ULTIMATE_TIME = 1.8
 CONVERGENCE_BOSS_FRACTION = 1.0   # share of a guardian's max HP the ultimate removes (1.0 = defeats it; try 0.5)
+
+# Status effects and reactions between elements.
+SOAK_TIME = 4.0
+BURN_TIME = 3.0
+BURN_DPS = 7.0
+SLOW_TIME = 1.6
+SHOCK_BONUS = 0.8           # Lightning on a soaked enemy: extra damage (share of the hit) ...
+SHOCK_STUN = 1.1            # ... and a stun
+STEAM_RADIUS = 210.0        # Fire on a soaked enemy: a steam burst around it
+STEAM_DAMAGE = 38.0
+FIRESTORM_RADIUS = 260.0    # Air on a burning enemy: the flames jump to its neighbours
 
 # Scoring: chain kills inside the window to raise the multiplier.
 COMBO_WINDOW = 3.0
@@ -333,6 +351,7 @@ class GameSession:
         self._tick_cooldowns(dt)
         self.invuln = max(0.0, self.invuln - dt)
         self._tick_buffs(dt)
+        events.extend(self._tick_status(dt))
         for element in self.unlocked:
             self.mana[element] = min(100.0, self.mana[element] + 10.0 * dt)
 
@@ -444,14 +463,14 @@ class GameSession:
         data: dict[str, Any] = {
             "element": element.value, "origin": origin, "dir": direction,
             "target": None, "damage": 0.0, "killed": False, "chain": [], "popped": [],
-            "defused": [], "interrupted": [], "boosted": self.boost_time > 0,
+            "defused": [], "interrupted": [], "boosted": self.boost_time > 0, "reactions": [], "effect": "",
         }
         end = (origin[0] + direction[0] * 1100.0, origin[1] + direction[1] * 1100.0)
         events: list[GameEvent] = []
         if target is not None:
             end = (target.x, target.y)
             data.update(target=(target.x, target.y), target_id=target.id, damage=damage, radius=target.r)
-            self._hurt_enemy(target, damage, direction, CAST_KNOCKBACK[element], data)
+            self._hurt_enemy(target, damage, direction, CAST_KNOCKBACK[element], data, element)
             if element is Element.LIGHTNING:                # chain to nearby enemies
                 chain_from, used = target, {target.id}
                 for _ in range(2):
@@ -465,7 +484,7 @@ class GameSession:
                         break
                     data["chain"].append((nxt.x, nxt.y))
                     used.add(nxt.id)
-                    self._hurt_enemy(nxt, damage * CHAIN_FALLOFF, direction, CAST_KNOCKBACK[element], data)
+                    self._hurt_enemy(nxt, damage * CHAIN_FALLOFF, direction, CAST_KNOCKBACK[element], data, element)
                     chain_from = nxt
             data["killed"] = target.hp <= 0
         data["popped"] = self.field.shoot_down(origin, end, CAST_REACH[element])
@@ -487,14 +506,76 @@ class GameSession:
         return best
 
     def _hurt_enemy(self, enemy: Enemy, amount: float, direction: tuple[float, float], knock: float,
-                    data: dict[str, Any] | None = None) -> None:
+                    data: dict[str, Any] | None = None, element: Element | None = None) -> None:
         kb = 0.12 if enemy.boss else 1.0
+        factor = element_multiplier(enemy.kind, element.value if element else None)
+        if data is not None and not data["effect"] and factor != 1.0:
+            data["effect"] = "weak" if factor > 1.0 else "resist"
+        amount *= factor
         enemy.hp -= amount
         enemy.flash = 0.09
         enemy.kx += direction[0] * knock * kb
         enemy.ky += direction[1] * knock * kb
         if enemy.hp > 0 and not enemy.boss and self.field.interrupt(enemy) and data is not None:
             data["interrupted"].append((enemy.x, enemy.y))      # you broke up its attack
+        if element is not None and data is not None:
+            self._react(enemy, element, amount, data)
+
+    def _stun(self, enemy: Enemy, seconds: float) -> None:
+        enemy.stun = max(enemy.stun, seconds)
+        enemy.wind = enemy.dash = 0.0
+        self.field.interrupt(enemy)
+
+    def _react(self, enemy: Enemy, element: Element, dealt: float, data: dict[str, Any]) -> None:
+        """Elements change each other: wet + lightning shocks, wet + fire steams, fire + air spreads, earth slows."""
+        reactions: list[dict[str, Any]] = data["reactions"]
+
+        def note(name: str) -> None:
+            reactions.append({"name": name, "x": enemy.x, "y": enemy.y})
+
+        if element is Element.WATER:
+            if enemy.burning > 0:
+                enemy.burning = 0.0
+                note("DOUSED")
+            enemy.soaked = SOAK_TIME
+        elif element is Element.LIGHTNING:
+            if enemy.soaked > 0:
+                enemy.soaked = 0.0
+                enemy.hp -= dealt * SHOCK_BONUS
+                self._stun(enemy, SHOCK_STUN * (0.35 if enemy.boss else 1.0))
+                note("SHOCKED")
+        elif element is Element.FIRE:
+            if enemy.soaked > 0:
+                enemy.soaked = 0.0
+                for other in self.enemies:
+                    if math.hypot(other.x - enemy.x, other.y - enemy.y) <= STEAM_RADIUS:
+                        other.hp -= STEAM_DAMAGE
+                        other.flash = 0.09
+                        if not other.boss and other is not enemy:
+                            self.field.interrupt(other)
+                note("STEAM")
+                data.setdefault("steam", []).append((enemy.x, enemy.y))
+            else:
+                enemy.burning = BURN_TIME
+        elif element is Element.AIR:
+            if enemy.burning > 0:
+                for other in self.enemies:
+                    if other is not enemy and math.hypot(other.x - enemy.x, other.y - enemy.y) <= FIRESTORM_RADIUS:
+                        other.burning = BURN_TIME
+                enemy.burning = BURN_TIME
+                note("FIRESTORM")
+        elif element is Element.EARTH:
+            enemy.slow = max(enemy.slow, SLOW_TIME * (0.5 if enemy.boss else 1.0))
+
+    def _tick_status(self, dt: float) -> list[GameEvent]:
+        for enemy in self.enemies:
+            enemy.soaked = max(0.0, enemy.soaked - dt)
+            enemy.stun = max(0.0, enemy.stun - dt)
+            enemy.slow = max(0.0, enemy.slow - dt)
+            if enemy.burning > 0:
+                enemy.burning = max(0.0, enemy.burning - dt)
+                enemy.hp -= BURN_DPS * dt
+        return self._reap()
 
     def _reap(self) -> list[GameEvent]:
         """Remove every enemy whose health ran out and report the defeats."""
@@ -874,7 +955,7 @@ class GameSession:
             self.unlocked,
             self.convergence,
             tuple(self._enemy_snapshot(e) for e in self.enemies),
-            shots=tuple(ShotSnapshot(s.x, s.y, s.r, s.tint, s.home, s.wall, s.ph) for s in self.field.shots),
+            shots=tuple(ShotSnapshot(s.x, s.y, s.r, s.tint, s.home, s.wall, s.ph, s.vx, s.vy, s.style) for s in self.field.shots),
             lasers=tuple(self._laser_snapshot(L) for L in self.field.lasers),
             bombs=tuple(self._bomb_snapshot(b) for b in self.field.bombs if b.t >= 0),
             invulnerable=self.invuln,
@@ -908,6 +989,8 @@ class GameSession:
         return EnemySnapshot(
             e.id, e.kind, e.hp, e.max_hp, (e.x, e.y), e.r, e.boss, e.enraged, warn, wind,
             e.dash > 0, e.cdir, e.age, e.blink, e.spiral is not None, e.elite, e.phase,
+            tuple(n for n, t in (("soaked", e.soaked), ("burning", e.burning), ("stun", e.stun), ("slow", e.slow)) if t > 0),
+            WEAKNESS.get(e.kind, ""),
         )
 
     @staticmethod
@@ -916,13 +999,13 @@ class GameSession:
             progress, firing = L.t / L.warn, False
         else:
             progress, firing = min(1.0, (L.t - L.warn) / max(1e-6, L.fire)), True
-        return LaserSnapshot(L.ox, L.oy, L.dx, L.dy, progress, firing, L.width, L.t)
+        return LaserSnapshot(L.ox, L.oy, L.dx, L.dy, progress, firing, L.width, L.t, L.bolt)
 
     @staticmethod
     def _bomb_snapshot(b) -> BombSnapshot:
         if b.t < b.fuse:
-            return BombSnapshot(b.x, b.y, b.r, max(0.0, b.t / b.fuse), False)
-        return BombSnapshot(b.x, b.y, b.r, min(1.0, (b.t - b.fuse) / combat.BOMB_BLAST), True)
+            return BombSnapshot(b.x, b.y, b.r, max(0.0, b.t / b.fuse), False, b.kind)
+        return BombSnapshot(b.x, b.y, b.r, min(1.0, (b.t - b.fuse) / combat.BOMB_BLAST), True, b.kind)
 
 
 def record_seen(save: SaveData, kinds) -> SaveData:

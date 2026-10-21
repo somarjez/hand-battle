@@ -1,17 +1,17 @@
-# Elemental Convergence
+# Sinag
 
-Elemental Convergence is a Windows-first, gesture-controlled action game built with Python, OpenCV, MediaPipe/cvzone, and Pygame. Your webcam becomes the arena: hand poses cast elemental powers while you restore the five seals of the Loom of Dawn and face the Rift Sovereign in a finite five-stage campaign.
+*Sinag* (Tagalog for a ray of light) is a Windows-first, gesture-controlled action game built with Python, OpenCV, MediaPipe/cvzone and Pygame. Your webcam is the arena: hand poses cast the elements while you travel the Philippines to find five pieces of a broken dawn.
 
-> *The sun did not rise on the day the Rift opened. You are the last Warden. Your hands remember how to speak to the elements.*
+> *In the old stories, the Bakunawa is a sea dragon that eats the moon. When it does, the elders bang pots and pans until it spits the moon back out. This time it swallowed the sun as well, and nobody's pots were loud enough.*
 
-The project began as a single-file hand-effects prototype. It is now organized into independently testable vision, game, presentation, and persistence modules. The original `python handTrack.py` command remains the supported compatibility entrypoint.
+The code package is still called `elemental_convergence` (so existing saves and imports keep working); "Sinag" is the name players see. The project began as a single-file hand-effects prototype. It is now organized into independently testable vision, game, presentation, and persistence modules. The original `python handTrack.py` command remains the supported compatibility entrypoint.
 
 ## Game at a glance
 
 - A 30-40 minute campaign with a prologue, named keepers, guardian dialogue, an epilogue and credits.
-- Five gestures, five powers, a two-palm ultimate, loot pick-ups and combo scoring.
+- Five gestures, five powers that react with each other, enemy weaknesses, loot pick-ups, combo scoring, and *Kalampag*, a two-palm ultimate.
 - Three-star rating per stage, best scores, a lore and bestiary Codex.
-- Every stage has its own hazard, music theme and colour, and a guardian that changes phase as it is hurt.
+- Five real places, each with its own hazard, hand-drawn scene, music and guardian that changes phase as it is hurt.
 - Story, Balanced and Master difficulty presets.
 - Guided camera/gesture calibration and a no-pressure recognition Sandbox.
 - Full keyboard and mouse menus (settings with sliders, pause menu, level select, codex); webcam gestures are reserved for combat.
@@ -19,19 +19,21 @@ The project began as a single-file hand-effects prototype. It is now organized i
 
 ### Campaign
 
-| Stage | Keeper | Power | Hazard | Main threats | Music |
-| --- | --- | --- | --- | --- | --- |
-| Stonewake Sanctuary | Orrin the Unmoving | Earth (fist) | Falling rocks | Shooters, Chargers | low, earthen, steady drums |
-| Tidelost Ruins | Sael of the Drowned Bell | Water (spread palm) | Tidal surge | Snipers, Bombers | flowing, bell arpeggios |
-| Skyglass Spires | Ysa, Windreader | Air (closed palm) | Lightning storm | Gunners, Casters | bright, fast shimmer |
-| Cinderforge | Kael Emberhand | Fire (two fingers) | Forge flare | Spinners, Sweepers, Blinkers | driving, four on the floor |
-| Eclipse Citadel | Veyra, the Rift Sovereign | Lightning (point) + Convergence | Eclipse surge (all of them) | Mixed roster | dark and heavy |
+| Place | Keeper | Power | Hazard | Guardian | Weak to | Music |
+| --- | --- | --- | --- | --- | --- | --- |
+| Mount Makiling, Laguna | Maria Makiling | Earth (fist) | Landslide | Kapre of the Balete | Fire | low drums, flute through the trees |
+| Pagsanjan Gorge, Laguna | Mang Amado, the boatman | Water (spread palm) | Rapids surge | Siyokoy King | Lightning | flowing gongs |
+| Basco Lighthouse, Batanes | Ate Luz, the lighthouse keeper | Air (closed palm) | Lightning strike | The Typhoon | Earth | open, airy, fast shimmer |
+| Taal Island, Batangas | Tatay Berting, the fish farmer | Fire (two fingers) | Eruption | Blaze of Taal | Water | driving drums, struck gongs |
+| The Bakunawa's mouth | Lola Auring (back home) | Lightning (point) | Eclipse (all of them) | Bakunawa | nothing: use everything | dark and heavy |
+
+The writing is plain on purpose: specific places, specific people, a bit of humour. The real folklore (Maria Makiling, the kapre, the siyokoy, the Bakunawa) is used with respect, and the Tagalog is kept to words English-speaking players can follow from context.
 
 Each stage plays out as four beats: **defeat everyone**, **hunt** a quota while reinforcements arrive, **survive** the clock (with an **elite** enemy), then the **guardian**, which opens a new phase (and calls minions) at two thirds and one third health and enrages at half. Losing all three lives restarts only the current stage; progress stays saved.
 
 **Scoring.** Kills are worth 100 (elites 300, guardians 1000) multiplied by a combo: chain kills within three seconds and the multiplier climbs to x5. **Stars:** clear the stage (1), lose no life (2), and take five hits or fewer (3).
 
-**Hazards** are always telegraphed (red circles, tightening lines, a banner): rockfall drops bombs, the tide sends a wall of orbs with one gap, storms drop beams, forge flares cluster bombs around you.
+**Hazards** are always telegraphed (red circles, tightening lines, a banner): landslides drop bombs, the rapids send a wall of orbs with one gap, storms drop beams, forge flares cluster bombs around you.
 
 ### Combat & look
 
@@ -54,7 +56,9 @@ Enemies fight back with real, dodgeable attacks aimed at your hands. Dodge with 
 
 **Blocking.** Your blasts are also your shield: they shoot down enemy orbs along their path (Air has the widest reach), defuse bombs they cross, and *interrupt* any non-guardian enemy that is still charging (dash wind-up, beam warning, spiral, burst). You'll see BLOCKED, DEFUSED and INTERRUPTED pop up. A beam that is already firing can't be stopped, so dodge it.
 
-**Convergence.** Defeat 10 enemies to fill the meter (a guardian counts as 5). Then press both palms together and hold for about half a second; a ring fills between your hands while it charges. It only fires for two distinct hands that are almost touching: one hand, a hand the tracker detects twice, or hands that are merely close will not trigger it, and it can't fire while the meter is below full. The tuning constants (`TOGETHER_NEAR`, `TOGETHER_HOLD`, `CONVERGENCE_KILLS`, ...) are at the top of `session.py`. For about 1.8 seconds everything on screen is hit, including minions, summons and reinforcements that arrive during the light show, and the ultimate's own kills no longer recharge the meter. `CONVERGENCE_BOSS_FRACTION` in `session.py` controls how much of a guardian's health it removes (1.0 = defeats it, 0.5 = half).
+**Kalampag.** The old remedy for the Bakunawa is to make a racket, and so is yours. Defeat 10 enemies to fill the meter (a guardian counts as 5), then press both palms together and hold for about half a second; a ring fills between your hands while it charges. It only fires for two distinct hands that are almost touching: one hand, a hand the tracker detects twice, or hands that are merely close will not trigger it, and it can't fire while the meter is below full. For about 1.8 seconds everything on screen is struck, including minions, summons and reinforcements that arrive during it, and a crowd of pots and pans plays. The ultimate's own kills do not recharge the meter. `CONVERGENCE_BOSS_FRACTION` in `session.py` controls how much of a guardian's health it removes (1.0 defeats it, 0.5 takes half). The tuning constants (`TOGETHER_NEAR`, `TOGETHER_HOLD`, `CONVERGENCE_KILLS`, ...) are at the top of `session.py`; the internal name predates the story.
+
+**Elements react.** Every enemy is weak to one element (x1.4 damage) and resists another (x0.7), and a coloured dot beside its name shows the weakness. Statuses combine: Water *soaks*; Lightning on a soaked enemy *shocks* it (extra damage and a stun); Fire on a soaked enemy makes *steam* (a burst around it); Fire on a dry enemy sets it *burning*; Air on a burning enemy starts a *firestorm* that spreads the flames; Earth *slows*. Guardians are stunned and slowed for less time, and the Bakunawa has no weakness at all. The tables are `WEAKNESS`, `RESISTANCE` and the constants at the top of `session.py`.
 
 **Loot.** Pick-ups float in the arena (and sometimes drop from defeated enemies). Touch them with a hand before they fade (12 s, the ring around each shows the time left):
 
@@ -130,138 +134,36 @@ Combat casts automatically while a recognized pose is held and the relevant mana
 
 The **Settings** screen changes everything live and saves as you go: master, music and effects volume (sliders), difficulty, fullscreen, reduced flash, reduced shake, gesture labels, which camera to use, recalibration, and a confirmed *Reset progress*. The same screen opens from the pause menu and returns to it.
 
+### Look, and replacing the art
+
+There is no bitmap art. Each place is a layered paper-cut scene drawn in `presentation/art.py`, with a printed-grain texture and one animated detail: fireflies on Makiling, ripples in the gorge, the sweeping lamp at Basco, embers from Taal's crater, ash falling past the eclipsed moon. The interface uses a warm ink-and-gold palette, chamfered panels edged with a woven diamond band, and an eight-ray sun for selections and ratings. Text is set in the bundled Alegreya. To use your own picture for any place, save `assets/images/override/<stage>.png`.
+
 ### Audio
 
-All 34 sound effects and 9 music tracks are synthesised in code at startup on a background thread (about two seconds in total), so there are no audio files to ship. Each spell, hit, pick-up and warning has its own sound; every stage has its own theme; the guardian fight switches to a boss theme; results play a victory or defeat stinger. Music crossfades between screens and quietens while paused; a heartbeat quickens as health drops. Run `python tools/export_audio.py` to write everything out as WAV files, and drop an `.ogg` named after a sound into `elemental_convergence/assets/audio/` to replace it.
+All sound effects (37) and music tracks (9) are synthesised in code at startup on a background thread, so there are no audio files to ship. The music uses five-note scales with gong, bamboo-flute and hand-drum voices in place of generic synth pads; each place has its own theme, the guardian fight has a boss theme, and results play a victory or defeat stinger. Every spell, reaction, hit and pick-up has its own sound, and Kalampag adds a crowd of pots and pans. Music crossfades between screens and quietens while paused, and a heartbeat quickens as health drops. Run `python tools/export_audio.py` to write everything out as WAV files, and drop an `.ogg` named after a sound into `elemental_convergence/assets/audio/` to replace it.
 
-## Architecture
+### Gesture Sandbox, How to Play and the Codex
 
-```text
-handTrack.py                         Compatibility launcher
-elemental_convergence/
-├── app.py                           Pygame loop and subsystem composition
-├── models.py                        Shared immutable input and difficulty types
-├── vision.py                        Camera worker, landmark classification, calibration
-├── content.py                       Validated level schema and loader
-├── story.py                         Prologue, epilogue, codex text, how-to-play pages
-├── combat.py                        Enemy roster, attack patterns, hazards (pure logic)
-├── session.py                       Campaign rules: waves, scoring, loot, snapshots/events
-├── menus.py                         Menu model: buttons, sliders, toggles, choices
-├── persistence.py                   Versioned atomic save/settings repositories
-├── data/levels.json                 Authored campaign content
-├── assets/                          Optional original art and audio overrides
-└── presentation/
-    ├── scenes.py                    Pure navigation and player-flow state
-    ├── renderer.py                  Menu backgrounds, text helpers, gameplay entry point
-    ├── screens.py                   Menu, level select, results, pause, codex, story scenes
-    ├── battle_view.py               The OpenCV battle screen (enemies, effects, HUD)
-    ├── synth.py                     Procedural sound effects and music (NumPy only)
-    └── audio.py                     Audio engine: crossfades, throttling, event mapping
-tools/export_audio.py                Writes every sound and track as WAV
-tests/                               Hardware-independent unit and full-app headless tests
-```
+The **Gesture Sandbox** is a guided lesson: it asks for your hand, then each of the five hand-signs and the two-palm Kalampag, shows a
+drawn hand-sign and a ring that fills while you hold it, and tells you what it sees ("I see Air. Spread your fingers wider") if it is
+not quite right. After the lesson it stays open for free practice. Enter or Right skips ahead, Left goes back, R restarts. **How to Play**
+is an illustrated, animated lesson read aloud by Lola Auring. The **Codex** shows each creature as a portrait with what it fears and
+resists; creatures you have not met yet are dark silhouettes.
 
-Runtime data flow:
+### Narrator
 
-```text
-Camera → VisionService worker → immutable GestureFrame
-                                     ↓
-Pygame event loop → GameSession.update(dt, frame) → GameEvent values
-                                     ↓
-                              GameSnapshot → renderer
-                                     ↓
-                         results → atomic SaveRepository
-```
+The prologue, each place's introduction, the end-of-level story and the epilogue are read aloud by a storyteller using your
+system's own text-to-speech voice (Windows uses its built-in SAPI voices, so there is nothing to download). Each line of text
+appears as it is spoken, Enter skips ahead, and the music lowers while the narrator talks. Turn it off under Settings > Narrator.
+To choose a voice, set `SINAG_VOICE` to part of its name (for example `zira`); `SINAG_NARRATOR=off` disables it entirely. If
+no voice is installed the story scenes simply use their normal timed text. The narrator uses `pyttsx3` when it is installed and
+otherwise Windows' own speech engine (PowerShell), so it works without any extra install. If you hear nothing, run
+`python -m elemental_convergence.narrator`: it speaks a test sentence, or tells you exactly why it could not. Problems are also
+printed in the terminal as `[narrator] disabled: ...`.
 
-Important boundaries:
+### Graphics setting
 
-- `VisionService.start(camera_id)`, `latest()`, `latest_image()`, and `stop()` own all camera/thread lifecycle behavior.
-- `GameSession.start_level(...)`, `update(dt, frame)`, and `snapshot()` contain no Pygame or camera calls.
-- `AppModel` contains screen navigation without display dependencies.
-- Presentation treats art as optional and generates all audio itself; a missing asset or sound device never crashes the game.
-- Combat timing is measured in seconds, not frames, so render-rate changes do not alter cooldowns or objectives.
-
-## Authoring levels
-
-Campaign data lives in `elemental_convergence/data/levels.json`. Order in the array is progression order. Every level requires exactly three waves (then the guardian) and may link to one known next level. Story fields are optional, so older content still loads.
-
-```json
-{
-  "id": "stonewake",
-  "title": "Stonewake Sanctuary",
-  "subtitle": "The Seal of Stone",
-  "keeper": "Orrin the Unmoving",
-  "unlock": "earth",
-  "intro": ["Opening story lines."],
-  "outro": ["Closing story lines."],
-  "wave_titles": ["Tremors", "Shadows in the Rubble", "The Long Night", "The Stone Guardian"],
-  "boss": "stone_guardian",
-  "boss_name": "Stone Guardian",
-  "boss_lines": {"intro": "...", "phase2": "...", "phase3": "...", "defeat": "..."},
-  "lore": ["Codex text, unlocked when the seal is restored."],
-  "hazard": {"kind": "rockfall", "label": "FALLING ROCKS!", "first": 9, "interval": 11},
-  "waves": [
-    {"objective": "defeat_all", "enemies": {"shooter": 3}},
-    {"objective": "hunt", "quota": 8, "enemies": {"shooter": 2, "charger": 2}},
-    {"objective": "survive", "duration_seconds": 30, "enemies": {"shooter": 2, "charger": 2}, "elite": ["charger"]}
-  ],
-  "next_level": "tidelost"
-}
-```
-
-Objectives are `defeat_all`, `hunt` (needs a positive `quota`; enemies keep arriving until it is met) and `survive` (needs `duration_seconds`; replacements keep arriving). `elite` lists extra, tougher enemies that join the wave. Hazard kinds are `rockfall`, `tide`, `storm`, `forge` and `eclipse`. The loader rejects duplicate IDs, unknown elements, objectives or hazards, malformed durations or quotas, missing links, and levels with other than three waves, at startup and in tests.
-
-When adding a power, enemy or hazard, update the domain behavior first (`combat.py`, `session.py`), add unit tests, then reference the new identifier from JSON. Every enemy needs an entry in `story.ENEMY_LORE` (a test enforces it). Do not put Python behavior names or arbitrary code in content files.
-
-## Saves and settings
-
-User data is stored outside the repository:
-
-```text
-%LOCALAPPDATA%\ElementalConvergence\save.json
-%LOCALAPPDATA%\ElementalConvergence\settings.json
-```
-
-Both formats contain a `version` field and use write-to-temporary-file followed by atomic replacement. Malformed or unsupported files are renamed to `*.corrupt.json`, then replaced with safe defaults. The game saves level unlocks and completions, best scores, best stars, the bestiary and whether the prologue was seen, not mid-level combat state. Save version 2 loads version 1 files unchanged (the new fields default).
-
-Settings include camera ID, fullscreen/fill behavior, hand overlay visibility, reduced flash/shake, and master/music/SFX volume. Delete `settings.json` to re-run defaults; delete both files to reset all local progress.
-
-## Tests
-
-The suite avoids real cameras, windows, and audio hardware. It covers:
-
-- campaign schema and progression links;
-- gesture classification, smoothing, calibration, and camera failure;
-- seconds-based combat, hand-loss behavior, pause, waves, lives, and unlocks;
-- atomic persistence and corrupt-file recovery;
-- hunt waves, elites, hazards, boss phases, combo scoring, stars and save migration;
-- every sound effect and music track (audible, unclipped, click-free, loops seamlessly) and the event-to-sound mapping;
-- the menu model, and full-app flows driven headlessly with keyboard and mouse (settings, pause, results, level select, codex);
-- scene navigation, hand-to-screen mapping on any window shape, and headless Pygame rendering.
-
-Run everything:
-
-```powershell
-python -m pytest -q
-ruff check .
-python -m compileall -q elemental_convergence handTrack.py
-```
-
-For a manual smoke test, launch windowed, finish calibration, enter Stonewake, verify all poses in Sandbox, pause/resume combat, lose/retry a level, complete it, restart the app, and confirm Tidelost remains unlocked.
-
-## Windows packaging
-
-Install development dependencies, then build the checked-in one-directory bundle:
-
-```powershell
-python -m PyInstaller --clean --noconfirm elemental-convergence.spec
-```
-
-The result is `dist\ElementalConvergence\ElementalConvergence.exe`. The one-directory layout is intentional: OpenCV/MediaPipe native libraries and optional assets are easier to inspect and troubleshoot than in a one-file self-extracting executable.
-
-Before distributing a build, test it on a Windows account without the source checkout, with both a built-in and a virtual camera if available. Code-signing and installer creation are outside the current project scope.
-
-## Troubleshooting
+*Graphics: Auto* watches frame times during fights and switches to a lighter path (softer glow, fewer particles, faster scaling) only after a sustained run of slow frames, and back only after a long calm one, so it cannot flicker. *High* and *Fast* force a mode. Menus never trigger it.
 
 ### No camera or a black preview
 
@@ -298,4 +200,4 @@ Pull requests should explain why the change is needed, list the affected player/
 
 - Computer vision: OpenCV, MediaPipe, and cvzone.
 - Windowing, rendering, and audio: Pygame.
-- Original title artwork: generated specifically for this repository; see the asset attribution file.
+- Art, audio and the interface are all generated in code. The font is Alegreya under the SIL Open Font License; see the asset attribution file.

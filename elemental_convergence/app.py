@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import time
 import traceback
 from dataclasses import replace
 
@@ -8,11 +9,15 @@ import cv2
 import pygame
 
 from . import story
-from .combat import kind_info
+from .combat import RESISTANCE, WEAKNESS, kind_info
 from .content import LevelDefinition, load_levels
 from .menus import Item, Menu, clamp_index
+from .narrator import Narrator
+from .sandbox import SandboxTutorial
 from .models import Difficulty, GestureFrame, canvas_size_for, scale_frame
+from .quality import GRAPHICS_MODES, QualityGovernor, use_fast_path
 from .persistence import SaveData, SaveRepository, SettingsRepository, user_data_dir
+from .presentation import sprites
 from .presentation.audio import AudioManager, music_for
 from .presentation.renderer import GameRenderer
 from .presentation.scenes import AppModel, SceneId
@@ -70,7 +75,7 @@ class Application:
         self.order = level_order(self.levels)
         self.model = AppModel(self.levels, self.save_repository.load(), settings)
         self.window = self._open_window(settings.fullscreen)
-        pygame.display.set_caption("Elemental Convergence")
+        pygame.display.set_caption("Sinag")
         self.canvas = pygame.Surface(canvas_size_for(self.window.get_size()))
         self.clock = pygame.time.Clock()
         self.renderer = GameRenderer(LOGICAL_SIZE)
@@ -78,7 +83,12 @@ class Application:
         self.calibration = CalibrationSession()
         self.session = GameSession(self.levels)
         self.audio = AudioManager(self.renderer.asset_root, settings.master_volume, settings.music_volume, settings.sfx_volume)
+        self.narrator = Narrator(enabled=settings.narrator, volume=settings.master_volume)
+        self._narr_key: str | None = None
+        self.sandbox = SandboxTutorial()
+        self._sandbox_step = -1
         self.running = True
+        self.governor = QualityGovernor()
         self.level_select_index = 0
         self.codex_tab = 0
         self.codex_index = 0
@@ -124,6 +134,8 @@ class Application:
         self.renderer.reduced_shake = s.reduced_shake
         self.renderer.battle.show_hands = s.show_hand_overlay
         self.audio.set_volumes(s.master_volume, s.music_volume, s.sfx_volume)
+        self.narrator.volume = s.master_volume
+        self.narrator.set_enabled(s.narrator)
         if save:
             self.settings_repository.save(s)
 
@@ -132,6 +144,16 @@ class Application:
     def _set_setting(self, **changes) -> None:
         self.model.set_setting(**changes)
         self._apply_settings()
+
+    def _track_quality(self, work_seconds: float) -> None:
+        """Only fights are heavy, so only they feed the governor; menus never trigger the fast path."""
+        if self.model.scene in (SceneId.GAMEPLAY, SceneId.PAUSE, SceneId.RESULTS):
+            self.governor.record(work_seconds)
+        self.renderer.battle.fast = use_fast_path(self.model.settings.graphics, self.governor)
+
+    def _set_graphics(self, index: int) -> None:
+        self._set_setting(graphics=GRAPHICS_MODES[index % len(GRAPHICS_MODES)])
+        self.governor.reset()
 
     def _set_fullscreen(self, on: bool) -> None:
         self._set_setting(fullscreen=bool(on))
@@ -163,7 +185,7 @@ class Application:
                 Item("Continue" if has_progress else "Begin the Journey", action=self._continue),
                 Item("New Game", action=self._new_game, hint="Start again from the first seal (your stars and scores are kept)"),
                 Item("Level Select", action=lambda: m.go(SceneId.LEVEL_SELECT), hint="Replay any seal you have restored"),
-                Item("Codex", action=lambda: m.go(SceneId.CODEX), hint="Lore of the seals and the creatures of the Rift"),
+                Item("Codex", action=lambda: m.go(SceneId.CODEX), hint="The places, their keepers, and the shadows you meet"),
                 Item("Gesture Sandbox", action=lambda: m.go(SceneId.SANDBOX), hint="Practice your hand gestures"),
                 Item("How to Play", action=lambda: m.go(SceneId.HOW_TO_PLAY)),
                 Item("Settings", action=m.open_settings),
@@ -204,6 +226,9 @@ class Application:
                 toggle("Reduced flash", "reduced_flash", "Fewer bright flashes and screen floods"),
                 toggle("Reduced shake", "reduced_shake", "No screen shake"),
                 toggle("Gesture labels", "show_hand_overlay", "Show the element name above each hand"),
+                toggle("Narrator", "narrator", "A storyteller reads the story aloud (uses your system's text-to-speech voice)"),
+                Item("Graphics", "choice", get=lambda: GRAPHICS_MODES.index(m.settings.graphics), set=self._set_graphics,
+                     options=("Auto", "High", "Fast"), hint="Auto lowers effects only if frames run long. Fast: lighter glow, fewer particles."),
                 Item("Camera", "choice", get=lambda: (m.settings.camera_id or 0) % CAMERA_SLOTS, set=self._change_camera,
                      options=tuple(f"Camera {i}" for i in range(CAMERA_SLOTS)), hint="Pick the camera that sees your hands"),
                 Item("Recalibrate camera", action=lambda: m.go(SceneId.CALIBRATION), hint="Re-run camera and gesture setup"),
@@ -231,6 +256,9 @@ class Application:
 
     def _enter_scene(self, scene: SceneId) -> None:
         self.scene_time = 0.0
+        self.narrator.stop()
+        self._narr_key = None
+        self._narrate(scene)
         self.menu = self._build_menu(scene)
         self.rows = []
         self._reset_armed = False
@@ -245,6 +273,35 @@ class Application:
             self.codex_index = 0
         elif scene is SceneId.HOW_TO_PLAY:
             self.how_page = 0
+            self._read_how_page()
+        elif scene is SceneId.SANDBOX:
+            self.sandbox.restart()
+            self._sandbox_step = -1
+
+    def _narrate(self, scene: SceneId) -> None:
+        """Have the storyteller read the story scenes; the text then follows the voice."""
+        if scene in (SceneId.PROLOGUE, SceneId.EPILOGUE, SceneId.STORY):
+            title, lines, _ = self._text_scene(scene)
+            spoken_lines = list(lines)
+            if scene is SceneId.STORY:                         # open with the place's name
+                spoken_lines[0] = f"{title}. {spoken_lines[0]}"
+            key = f"{scene.value}:{self.model.current_level_id}"
+            if self.narrator.read(key, spoken_lines):
+                self._narr_key = key
+        elif scene is SceneId.RESULTS and self.result.get("complete"):
+            self.narrator.read(f"results:{self.model.current_level_id}", [self.result["story"]])
+
+    def _read_how_page(self) -> None:
+        """Lola reads the current How to Play page aloud: her words first, then the rules."""
+        _, lines = story.HOW_TO_PLAY[self.how_page]
+        quote = story.HOW_TO_LOLA[self.how_page % len(story.HOW_TO_LOLA)]
+        self.narrator.read(f"how:{self.how_page}", [quote, *lines])
+
+    def _reveal(self, lines) -> float:
+        """Lines revealed so far: paced by the voice while it narrates, by the clock otherwise."""
+        if self.narrator.driving(self._narr_key):
+            return self.narrator.progress(TEXT_SECONDS_PER_LINE)
+        return self.scene_time / TEXT_SECONDS_PER_LINE
 
     # ------------------------------------------------------------------ actions
     def _continue(self) -> None:
@@ -312,7 +369,7 @@ class Application:
             "max_combo": max(1, self.session.max_combo), "hits": self.session.hits_taken,
             "time": format_time(snap.elapsed_seconds),
             "story": " ".join(level.outro) if complete else
-            "The Rift is patient. Learn its patterns (the red warnings always come first) and try again.",
+            "The dark is patient. Learn its patterns (the red warnings always come first) and try again.",
         }
         self.model.go(SceneId.RESULTS)
 
@@ -321,10 +378,13 @@ class Application:
         try:
             while self.running:
                 dt = self.clock.tick(60) / 1000.0
+                started = time.perf_counter()
                 self._events()
                 self._update(dt)
                 self._render()
+                self._track_quality(time.perf_counter() - started)
         finally:
+            self.narrator.close()
             self.vision.stop()
             pygame.quit()
         return 0
@@ -386,6 +446,17 @@ class Application:
             if left or right:
                 self.how_page = (self.how_page + (1 if right else -1)) % len(story.HOW_TO_PLAY)
                 self._ui_sound("ui_move")
+                self._read_how_page()
+        elif scene is SceneId.SANDBOX:
+            if accept or right:
+                self.sandbox.next()
+                self._ui_sound("ui_move")
+            elif left:
+                self.sandbox.prev()
+                self._ui_sound("ui_move")
+            elif key == pygame.K_r:
+                self.sandbox.restart()
+                self._ui_sound("ui_back")
         elif scene in TEXT_SCENES and accept:
             self._advance_text()
         elif scene is SceneId.CALIBRATION:
@@ -421,7 +492,8 @@ class Application:
         """Enter on a story scene: finish the reveal first, then move on."""
         scene = self.model.scene
         lines = self._text_scene(scene)[1]
-        if self.scene_time < len(lines) * TEXT_SECONDS_PER_LINE:
+        if self._reveal(lines) < len(lines):
+            self.narrator.stop()
             self.scene_time = len(lines) * TEXT_SECONDS_PER_LINE + 0.01
             return
         self._ui_sound("ui_select")
@@ -501,10 +573,16 @@ class Application:
                 start = max(0, min(self.codex_index - visible // 2, max(0, len(self._codex_entries()) - visible)))
                 self.codex_index = start + index
                 self._ui_sound("ui_move")
+        elif scene is SceneId.SANDBOX:
+            index = self._row_index(pos)
+            if index is not None:
+                self.sandbox.go(index)
+                self._ui_sound("ui_move")
         elif scene is SceneId.HOW_TO_PLAY:
             step = 1 if pos[0] > self.canvas.get_width() // 2 else -1
             self.how_page = (self.how_page + step) % len(story.HOW_TO_PLAY)
             self._ui_sound("ui_move")
+            self._read_how_page()
         elif scene in TEXT_SCENES:
             self._advance_text()
 
@@ -513,7 +591,7 @@ class Application:
         scene = self.model.scene
         snap = self.session.snapshot()
         self.audio.play_music(music_for(scene.value, self.model.current_level_id, snap.state, self.model.last_result))
-        self.audio.set_duck(0.4 if scene is SceneId.PAUSE else 1.0)
+        self.audio.set_duck(0.4 if scene is SceneId.PAUSE else (0.55 if self.narrator.speaking else 1.0))
         self.audio.update()
         playing = scene is SceneId.GAMEPLAY and snap.state in (SessionState.ACTIVE, SessionState.BOSS)
         self._heartbeat -= dt
@@ -545,6 +623,12 @@ class Application:
             self.calibration.observe(frame)
             if self.calibration.complete:
                 self._finish_calibration()
+        elif scene is SceneId.SANDBOX:
+            if self.sandbox.update(dt, self.game_frame.hands):
+                self._ui_sound("ui_select")
+            if self.sandbox.index != self._sandbox_step:             # the storyteller coaches each step aloud
+                self._sandbox_step = self.sandbox.index
+                self.narrator.read(f"sandbox:{self.sandbox.step.id}", [self.sandbox.step.spoken])
         elif scene is SceneId.GAMEPLAY:
             events = self.session.update(dt, self.game_frame)
             self.renderer.update_fx(dt, self.session.snapshot(), events, self.game_frame)
@@ -581,6 +665,7 @@ class Application:
                 done = level_id in save.completed_levels
                 entries.append({
                     "name": level.title, "unlocked": done, "subtitle": f"{level.subtitle}  -  {level.keeper}",
+                    "kind": level.boss, "boss": True, "aura": self._aura(level.boss),
                     "text": "\n".join(level.lore) + "\n\n" + (story.HAZARD_LORE.get(level.hazard.kind, "") if level.hazard else ""),
                     "locked_text": "Restore this seal to read its history.",
                     "facts": [f"Guardian: {level.boss_name}"],
@@ -590,11 +675,19 @@ class Application:
                 seen = kind in save.seen_enemies
                 info = kind_info(kind)
                 entries.append({
-                    "name": name, "unlocked": seen, "subtitle": "Guardian" if info.boss else "Creature of the Rift",
+                    "name": name, "unlocked": seen, "subtitle": "Guardian" if info.boss else "A creature of the old stories",
+                    "kind": kind, "boss": info.boss, "aura": self._aura(kind),
+                    "weak": WEAKNESS.get(kind), "resist": RESISTANCE.get(kind),
                     "text": text, "locked_text": "Meet this enemy in battle to record it here.",
                     "facts": ["Attacks: " + ", ".join(sorted(set(info.attacks)))] if seen else [],
                 })
         return entries
+
+    @staticmethod
+    def _aura(kind: str | None) -> tuple[int, int, int]:
+        """The creature's glow colour as RGB (the sprite book keeps it as BGR)."""
+        b = sprites.AURA.get(kind or "", (80, 90, 140))
+        return (min(255, b[2] * 2), min(255, b[1] * 2), min(255, b[0] * 2))
 
     def _text_scene(self, scene: SceneId) -> tuple[str, list[str], str]:
         """(title, lines, background stage) for the story-style scenes."""
@@ -633,13 +726,13 @@ class Application:
         if scene in (SceneId.PROLOGUE, SceneId.EPILOGUE, SceneId.CREDITS, SceneId.STORY, SceneId.BRIEFING):
             title, lines, stage = self._text_scene(scene)
             footer = {"Credits": "Enter: main menu"}.get(title.title(), "Enter: continue")
-            r.draw_text_scene(canvas, title, lines, stage, self.scene_time / TEXT_SECONDS_PER_LINE, footer)
+            r.draw_text_scene(canvas, title, lines, stage, self._reveal(lines), footer)
             self.rows = []
         elif scene is SceneId.MENU and self.menu is not None:
-            self.rows = r.draw_menu_screen(canvas, self.menu, subtitle=story.TAGLINE, y0=218, row_h=47)
+            self.rows = r.draw_menu_screen(canvas, self.menu, subtitle=story.TAGLINE, y0=240, row_h=46)
         elif scene is SceneId.SETTINGS and self.menu is not None:
             self.rows = r.draw_menu_screen(canvas, self.menu, "SETTINGS", "Changes are saved as you make them", wide=True,
-                                           y0=138, row_h=42, compact=True)
+                                           y0=134, row_h=38, compact=True)
         elif scene is SceneId.CALIBRATION:
             r.draw_calibration(canvas, self.vision.latest(), self.calibration.missing, self._camera_surface())
             self.rows = []
@@ -661,23 +754,22 @@ class Application:
             self.rows = r.draw_codex(canvas, ("Seals", "Bestiary"), self.codex_tab, entries, self.codex_index)
         elif scene is SceneId.HOW_TO_PLAY:
             heading, lines = story.HOW_TO_PLAY[self.how_page]
-            r.draw_pages(canvas, "HOW TO PLAY", heading, lines, self.how_page, len(story.HOW_TO_PLAY))
+            r.draw_howto(canvas, self.how_page, len(story.HOW_TO_PLAY), heading,
+                         story.HOW_TO_LOLA[self.how_page % len(story.HOW_TO_LOLA)], lines, self.narrator.speaking)
             self.rows = []
         elif scene is SceneId.SANDBOX:
-            frame = self.vision.latest()
-            r.draw_camera_cover(canvas, self.last_camera_image)
-            labels = [hand.gesture.value.upper() for hand in frame.hands if hand.gesture]
-            r.draw_overlay(canvas, "GESTURE SANDBOX", labels or ["Show a gesture to test recognition", "Esc: main menu"])
-            self.rows = []
+            self.rows = r.draw_sandbox(canvas, self.last_camera_image, self.sandbox, self.game_frame.hands)
         if canvas.get_size() == self.window.get_size():
             self.window.blit(canvas, (0, 0))              # no rescale needed
+        elif self.renderer.battle.fast:
+            pygame.transform.scale(canvas, self.window.get_size(), self.window)
         else:
             pygame.transform.smoothscale(canvas, self.window.get_size(), self.window)
         pygame.display.flip()
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Elemental Convergence")
+    parser = argparse.ArgumentParser(description="Sinag")
     parser.add_argument("--camera", type=int, default=None, help="camera index to open")
     parser.add_argument("--windowed", action="store_true", help="start in a resizable window")
     args = parser.parse_args(argv)
@@ -688,7 +780,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             log.parent.mkdir(parents=True, exist_ok=True)
             log.write_text(traceback.format_exc(), encoding="utf-8")
-            print(f"Elemental Convergence crashed. Details were saved to {log}")
+            print(f"Sinag crashed. Details were saved to {log}")
         except OSError:
             pass
         raise
