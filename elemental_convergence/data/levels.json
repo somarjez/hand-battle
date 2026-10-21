@@ -1,72 +1,356 @@
 [
-  {
-    "id": "stonewake",
-    "title": "Stonewake Sanctuary",
-    "unlock": "earth",
-    "intro": ["The Stone Seal answers a steady hand.", "Stand your ground and awaken the first element."],
-    "outro": ["Stone remembers your resolve. The drowned ruins now call."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"shooter": 3}},
-      {"objective": "defeat_all", "enemies": {"shooter": 3, "charger": 2}},
-      {"objective": "survive", "duration_seconds": 30, "enemies": {"shooter": 2, "charger": 3}}
-    ],
-    "boss": "stone_guardian",
-    "next_level": "tidelost"
+ {
+  "id": "stonewake",
+  "title": "Mount Makiling",
+  "subtitle": "Sinag ng Lupa: the Ray of Earth",
+  "keeper": "Maria Makiling",
+  "unlock": "earth",
+  "intro": [
+   "Mount Makiling looks asleep from Los Baños, but today it is holding its breath.",
+   "Maria Makiling has watched over this mountain since before there were roads. Her rules are simple: take only what you need, and take your trash home.",
+   "The anino, the shadows, did not read the rules. A kapre in the old balete tree has gone wild and is throwing rocks at everybody.",
+   "Make a fist. The ground will listen."
+  ],
+  "outro": [
+   "Maria Makiling nods once, which from her is a hug.",
+   "'The next ray is downriver, in the gorge. Mang Amado is waiting. He will overcharge you.'"
+  ],
+  "wave_titles": [
+   "Loose Gravel",
+   "Anino in the Undergrowth",
+   "Night Comes Early",
+   "The Kapre of the Balete"
+  ],
+  "boss_name": "Kapre of the Balete",
+  "boss_lines": {
+   "intro": "The balete shakes. A kapre climbs down, still smoking his enormous cigar. He does not look friendly.",
+   "phase2": "He swings a whole branch like a bat. The ground starts to give way.",
+   "phase3": "The cigar glows red. He is done warning you.",
+   "defeat": "The kapre sits down hard and coughs, and the shadow slides off him. 'Sorry,' he mutters. 'Bad few days.'"
   },
-  {
-    "id": "tidelost",
-    "title": "Tidelost Ruins",
-    "unlock": "water",
-    "intro": ["The Tide Seal lies beneath a sky of falling embers.", "Flow around danger; turn every attack aside."],
-    "outro": ["The ruins breathe again. A path opens above the clouds."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"shooter": 2, "sniper": 2}},
-      {"objective": "defeat_all", "enemies": {"bomber": 3, "shooter": 2}},
-      {"objective": "survive", "duration_seconds": 35, "enemies": {"sniper": 2, "bomber": 3}}
-    ],
-    "boss": "tide_guardian",
-    "next_level": "skyglass"
+  "lore": [
+   "Mount Makiling, in Laguna, is said to be watched over by Maria Makiling, a diwata who rewards the kind and hides from the greedy.",
+   "A kapre is a giant who lives in big trees, usually seen smoking an enormous cigar. Most of them are harmless. This one is not himself."
+  ],
+  "hazard": {
+   "kind": "rockfall",
+   "label": "LANDSLIDE!",
+   "first": 9,
+   "interval": 11
   },
-  {
-    "id": "skyglass",
-    "title": "Skyglass Spires",
-    "unlock": "air",
-    "intro": ["The Gale Seal waits where broken towers touch the wind.", "Move lightly; find the opening in every pattern."],
-    "outro": ["The storm clears. Far below, the Cinderforge burns."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"gunner": 2, "shooter": 3}},
-      {"objective": "defeat_all", "enemies": {"caster": 3, "gunner": 2}},
-      {"objective": "survive", "duration_seconds": 40, "enemies": {"caster": 3, "gunner": 3}}
-    ],
-    "boss": "gale_guardian",
-    "next_level": "cinderforge"
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "shooter": 3
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 8,
+    "enemies": {
+     "shooter": 2,
+     "charger": 2
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 30,
+    "enemies": {
+     "shooter": 2,
+     "charger": 2
+    },
+    "elite": [
+     "charger"
+    ]
+   }
+  ],
+  "boss": "stone_guardian",
+  "next_level": "tidelost"
+ },
+ {
+  "id": "tidelost",
+  "title": "Pagsanjan Gorge",
+  "subtitle": "Sinag ng Tubig: the Ray of Water",
+  "keeper": "Mang Amado",
+  "unlock": "water",
+  "intro": [
+   "The Pagsanjan gorge is where boatmen pole tourists up the rapids for a living. Lately the rapids have started pushing back.",
+   "Mang Amado has paddled this river for forty years. He has opinions about the water, and about your life jacket.",
+   "He is holding the second ray in a biscuit tin, and the shadows want the tin.",
+   "Open your hand flat. Water does not fight the rock; it goes around it."
+  ],
+  "outro": [
+   "Mang Amado hands over the tin. 'No charge,' he says, then adds a boarding fee.",
+   "'The next one is far north, on a windy island with a lighthouse. Bring a jacket.'"
+  ],
+  "wave_titles": [
+   "Calm Stretch",
+   "Rapids Ahead",
+   "Last Boat Out",
+   "The Siyokoy King"
+  ],
+  "boss_name": "Siyokoy King",
+  "boss_lines": {
+   "intro": "Something scaly rises from the pool below the falls. The siyokoy are river folk, and this one has had enough of visitors.",
+   "phase2": "He slams the water, and the whole gorge answers.",
+   "phase3": "He dives. Watch where the water moves.",
+   "defeat": "The Siyokoy King slides back under, embarrassed. The river runs clear again."
   },
-  {
-    "id": "cinderforge",
-    "title": "Cinderforge",
-    "unlock": "fire",
-    "intro": ["The Ember Seal is chained to the forge-heart.", "Strike with purpose before the dark can blink away."],
-    "outro": ["Four seals burn as one. The Eclipse Citadel is exposed."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"spinner": 3, "sweeper": 2}},
-      {"objective": "defeat_all", "enemies": {"blinker": 3, "spinner": 2}},
-      {"objective": "survive", "duration_seconds": 45, "enemies": {"spinner": 2, "sweeper": 2, "blinker": 2}}
-    ],
-    "boss": "ember_guardian",
-    "next_level": "eclipse"
+  "lore": [
+   "Pagsanjan Falls, in Laguna, is reached by narrow boats poled upstream by boatmen who know every rock in the gorge.",
+   "A siyokoy is a scaly water creature of Philippine folklore, usually described as a merman with a bad temper."
+  ],
+  "hazard": {
+   "kind": "tide",
+   "label": "RAPIDS SURGE!",
+   "first": 10,
+   "interval": 15
   },
-  {
-    "id": "eclipse",
-    "title": "Eclipse Citadel",
-    "unlock": "lightning",
-    "intro": ["Every restored seal points to the same wound in the world.", "Master Lightning. Enter Convergence. End the Rift."],
-    "outro": ["The seals are whole. Dawn reaches every corner of the realm.", "The Warden's journey is complete."],
-    "waves": [
-      {"objective": "defeat_all", "enemies": {"charger": 2, "sniper": 2, "caster": 2}},
-      {"objective": "defeat_all", "enemies": {"gunner": 2, "spinner": 2, "blinker": 2}},
-      {"objective": "survive", "duration_seconds": 50, "enemies": {"bomber": 2, "sweeper": 2, "caster": 2}}
-    ],
-    "boss": "rift_sovereign",
-    "next_level": null
-  }
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "shooter": 2,
+     "sniper": 2
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 9,
+    "enemies": {
+     "bomber": 2,
+     "shooter": 2
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 35,
+    "enemies": {
+     "sniper": 2,
+     "bomber": 2
+    },
+    "elite": [
+     "sniper"
+    ]
+   }
+  ],
+  "boss": "tide_guardian",
+  "next_level": "skyglass"
+ },
+ {
+  "id": "skyglass",
+  "title": "Basco Lighthouse",
+  "subtitle": "Sinag ng Hangin: the Ray of Wind",
+  "keeper": "Ate Luz",
+  "unlock": "air",
+  "intro": [
+   "Batanes is the northernmost province: green rolling hills, stone houses, and a wind that never takes a day off.",
+   "Ate Luz has kept the Basco lighthouse for most of her life. Luz means light. She says it is a coincidence.",
+   "A typhoon has been parked over the island since the dark began, and the ray is at the top of the tower.",
+   "Close your palm tight. Wind gets through anything that is not braced for it."
+  ],
+  "outro": [
+   "The lamp turns, and its beam finally reaches the sea.",
+   "Ate Luz points south. 'Taal. Take a hat. No, not for the sun. There is no sun.'"
+  ],
+  "wave_titles": [
+   "First Gust",
+   "Crosswinds",
+   "The Eye Passes",
+   "The Typhoon"
+  ],
+  "boss_name": "The Typhoon",
+  "boss_lines": {
+   "intro": "The clouds close into a ring. The eye of the storm is looking straight at you.",
+   "phase2": "The wind picks up every loose thing on the island and throws it your way.",
+   "phase3": "The eye closes. This is the part where it gets worse.",
+   "defeat": "The storm unwinds into an ordinary, clear sky. Ate Luz switches the lamp on and says, 'Finally.'"
+  },
+  "lore": [
+   "The Basco Lighthouse, on Naidi Hills, looks out over Batan Island in Batanes, one of the windiest places in the country.",
+   "About twenty typhoons enter the Philippine area each year. Filipinos call them bagyo, and tie the roof down."
+  ],
+  "hazard": {
+   "kind": "storm",
+   "label": "LIGHTNING STRIKE!",
+   "first": 10,
+   "interval": 16
+  },
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "gunner": 2,
+     "shooter": 3
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 10,
+    "enemies": {
+     "caster": 2,
+     "gunner": 1
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 40,
+    "enemies": {
+     "caster": 3,
+     "gunner": 2
+    },
+    "elite": [
+     "gunner"
+    ]
+   }
+  ],
+  "boss": "gale_guardian",
+  "next_level": "cinderforge"
+ },
+ {
+  "id": "cinderforge",
+  "title": "Taal Island",
+  "subtitle": "Sinag ng Apoy: the Ray of Fire",
+  "keeper": "Tatay Berting",
+  "unlock": "fire",
+  "intro": [
+   "Taal is a volcano on an island in a lake inside an older volcano's crater. You could not make that geography up.",
+   "Tatay Berting farms fish beside it. He has evacuated three times and come back a fourth, because the fish do not feed themselves.",
+   "The fourth ray is at the crater, and the ground there is already warm.",
+   "Two fingers up. Fire answers people who are not afraid of it, or who are afraid and go anyway."
+  ],
+  "outro": [
+   "The ray flares gold. Four are home.",
+   "The fifth is not a place. It is wherever the dragon went."
+  ],
+  "wave_titles": [
+   "Warm Ground",
+   "Ashfall",
+   "The Lake Boils",
+   "The Blaze of Taal"
+  ],
+  "boss_name": "Blaze of Taal",
+  "boss_lines": {
+   "intro": "The crater lake boils. The blaze climbs out of it in a shape that looks, rudely, a lot like a face.",
+   "phase2": "Ash begins to fall. It is hot enough to count as rain.",
+   "phase3": "It is burning its own ray to keep you out. Water hurts it most.",
+   "defeat": "The blaze sinks back into the crater and the lake goes quiet. Somewhere a rooster, finally, crows."
+  },
+  "lore": [
+   "Taal Volcano is a small volcano on an island in Taal Lake, in Batangas, and one of the most active in the Philippines.",
+   "Its last major eruption was in January 2020. The families who live around the lake have been rebuilding ever since."
+  ],
+  "hazard": {
+   "kind": "forge",
+   "label": "ERUPTION!",
+   "first": 8,
+   "interval": 12
+  },
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "spinner": 3,
+     "sweeper": 2
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 10,
+    "enemies": {
+     "blinker": 3,
+     "spinner": 1
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 45,
+    "enemies": {
+     "spinner": 2,
+     "sweeper": 2,
+     "blinker": 2
+    },
+    "elite": [
+     "sweeper"
+    ]
+   }
+  ],
+  "boss": "ember_guardian",
+  "next_level": "eclipse"
+ },
+ {
+  "id": "eclipse",
+  "title": "Mouth of the Bakunawa",
+  "subtitle": "Ang Huling Sinag: the Last Ray",
+  "keeper": "Lola Auring",
+  "unlock": "lightning",
+  "intro": [
+   "There is no place called the Bakunawa's mouth. There is only the dark, and the sound of something very large breathing.",
+   "Four rays hang around you like lanterns. The sun and the moon are in there somewhere, behind the teeth.",
+   "Your hands know the fifth sign, the one Lola Auring never explained: lightning. It is what Bathala sends to things that will not listen.",
+   "And you know what the elders do when the moon is eaten. Press your palms together. Make noise."
+  ],
+  "outro": [
+   "Dawn. The first one anyone has seen in three days.",
+   "It looks a little crooked, like it has been through something. So have you."
+  ],
+  "wave_titles": [
+   "The Dark Shore",
+   "What the Dark Remembers",
+   "Three Days Without Dawn",
+   "The Bakunawa"
+  ],
+  "boss_name": "Bakunawa",
+  "boss_lines": {
+   "intro": "The Bakunawa uncoils out of the dark with the sun and the moon glowing in its throat.",
+   "phase2": "It roars, and for a second every light in the world flickers.",
+   "phase3": "It is gulping again. Press your palms together. Kalampag!",
+   "defeat": "The Bakunawa chokes. The moon comes out first, then the sun, then a great deal of seawater. Far away someone is banging a pot, and then a hundred someones are."
+  },
+  "lore": [
+   "In the old stories the Bakunawa is a sea dragon that swallows the moon, and the elders drive it off by banging pots and pans until it spits the moon back out.",
+   "Some tellings say there were once seven moons. The Bakunawa ate six."
+  ],
+  "hazard": {
+   "kind": "eclipse",
+   "label": "ECLIPSE!",
+   "first": 8,
+   "interval": 14
+  },
+  "waves": [
+   {
+    "objective": "defeat_all",
+    "enemies": {
+     "charger": 2,
+     "sniper": 2,
+     "caster": 2
+    }
+   },
+   {
+    "objective": "hunt",
+    "quota": 12,
+    "enemies": {
+     "gunner": 2,
+     "spinner": 2,
+     "blinker": 1
+    }
+   },
+   {
+    "objective": "survive",
+    "duration_seconds": 50,
+    "enemies": {
+     "bomber": 2,
+     "sweeper": 2,
+     "caster": 2
+    },
+    "elite": [
+     "gunner",
+     "blinker"
+    ]
+   }
+  ],
+  "boss": "rift_sovereign",
+  "next_level": null
+ }
 ]
