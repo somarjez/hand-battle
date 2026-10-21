@@ -61,6 +61,7 @@ class GameRenderer(ScreenDrawing):
         self._embers = [(random.random(), random.random(), random.uniform(0.02, 0.07), random.uniform(1.5, 3.6), i % 3)
                         for i in range(46)]
         self._clock = 0.0
+        self.fx = self.battle
 
     # ---- accessibility ---------------------------------------------------------
     @property
