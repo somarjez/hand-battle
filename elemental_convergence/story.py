@@ -72,8 +72,8 @@ HOW_TO_PLAY: tuple[tuple[str, tuple[str, ...]], ...] = (
     )),
     ("Pick-ups", (
         "Touch pick-ups with your hand before they fade.",
-        "Heart: +25 HP        Regen: health over time        Shield: blocks every hit",
-        "Boost: stronger, faster blasts        Mana: refills one element",
+        "Heart: +25 HP. Regen: health over time. Shield: blocks every hit.",
+        "Boost: stronger, faster blasts. Mana: refills one element.",
     )),
     ("Kalampag", (
         "Defeat 10 enemies to fill the Kalampag meter. A guardian counts as 5.",

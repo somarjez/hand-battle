@@ -684,6 +684,11 @@ def blit(img: np.ndarray, col: np.ndarray, al: np.ndarray, cx: float, cy: float)
     img[iy0:iy1, ix0:ix1] = np.minimum(out, 255).astype(np.uint8)
 
 
+def fade(col: np.ndarray, al: np.ndarray, k: float):
+    """A see-through copy of a sprite (both layers scaled, since the colour is premultiplied)."""
+    return (col.astype(np.float32) * k).astype(np.uint8), (al.astype(np.float32) * k).astype(np.uint8)
+
+
 def scaled(col: np.ndarray, al: np.ndarray, k: float):
     """A resized copy of a sprite (used for the spawn-in pop)."""
     n = max(4, int(round(al.shape[0] * k)))

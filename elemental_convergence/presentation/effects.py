@@ -57,7 +57,7 @@ class FxSystem:
 
     def burst(self, x: float, y: float, color: RGB, count: int) -> None:
         for _ in range(count):
-            angle = self.rng.uniform(0.0, 6.283185307)
+            angle = self.rng.uniform(0.0, 2 * math.pi)
             speed = self.rng.uniform(1.0, 6.0)
             life = self.rng.uniform(0.25, 0.8)
             self.particles.append({

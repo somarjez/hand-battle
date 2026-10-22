@@ -28,7 +28,9 @@ from .vision import CalibrationSession, VisionService
 LOGICAL_SIZE = (1280, 720)
 DIFFICULTIES = (Difficulty.STORY, Difficulty.BALANCED, Difficulty.MASTER)
 CAMERA_SLOTS = 6
-TEXT_SECONDS_PER_LINE = 1.6          # story scenes reveal one line this often
+TEXT_SECONDS_PER_LINE = 1.6          # the least time a story line stays alone on screen
+READ_SECONDS_PER_CHAR = 0.05         # longer lines are given reading time
+LINE_FADE_SECONDS = 0.9              # how long a line takes to fade in
 MENU_SCENES = (SceneId.MENU, SceneId.SETTINGS, SceneId.PAUSE, SceneId.RESULTS)
 TEXT_SCENES = (SceneId.PROLOGUE, SceneId.EPILOGUE, SceneId.CREDITS, SceneId.STORY, SceneId.BRIEFING)
 LEVEL_TINTS = {
@@ -85,6 +87,8 @@ class Application:
         self.audio = AudioManager(self.renderer.asset_root, settings.master_volume, settings.music_volume, settings.sfx_volume)
         self.narrator = Narrator(enabled=settings.narrator, volume=settings.master_volume)
         self._narr_key: str | None = None
+        self._reveal_t = 0.0                  # seconds of timed reveal, used whenever the voice is not pacing the text
+        self._reveal_seed: float | None = None
         self.sandbox = SandboxTutorial()
         self._sandbox_step = -1
         self.running = True
@@ -258,6 +262,8 @@ class Application:
         self.scene_time = 0.0
         self.narrator.stop()
         self._narr_key = None
+        self._reveal_t = 0.0
+        self._reveal_seed = None
         self._narrate(scene)
         self.menu = self._build_menu(scene)
         self.rows = []
@@ -280,10 +286,10 @@ class Application:
 
     def _narrate(self, scene: SceneId) -> None:
         """Have the storyteller read the story scenes; the text then follows the voice."""
-        if scene in (SceneId.PROLOGUE, SceneId.EPILOGUE, SceneId.STORY):
+        if scene in (SceneId.PROLOGUE, SceneId.EPILOGUE, SceneId.STORY, SceneId.BRIEFING):
             title, lines, _ = self._text_scene(scene)
             spoken_lines = list(lines)
-            if scene is SceneId.STORY:                         # open with the place's name
+            if scene in (SceneId.STORY, SceneId.BRIEFING):     # open with the place's name / the briefing's title
                 spoken_lines[0] = f"{title}. {spoken_lines[0]}"
             key = f"{scene.value}:{self.model.current_level_id}"
             if self.narrator.read(key, spoken_lines):
@@ -297,11 +303,37 @@ class Application:
         quote = story.HOW_TO_LOLA[self.how_page % len(story.HOW_TO_LOLA)]
         self.narrator.read(f"how:{self.how_page}", [quote, *lines])
 
+    @staticmethod
+    def _line_seconds(line: str) -> float:
+        return max(TEXT_SECONDS_PER_LINE, READ_SECONDS_PER_CHAR * len(line) + 0.8)
+
+    def _timed_progress(self, lines, t: float) -> float:
+        start = 0.0
+        for i, line in enumerate(lines):
+            dur = self._line_seconds(line)
+            if t < start + dur:
+                return i + min(1.0, (t - start) / LINE_FADE_SECONDS)
+            start += dur
+        return float(len(lines))
+
+    def _time_at(self, lines, p: float) -> float:
+        start = sum(self._line_seconds(line) for line in lines[:int(p)])
+        return start + (p - int(p)) * LINE_FADE_SECONDS
+
     def _reveal(self, lines) -> float:
-        """Lines revealed so far: paced by the voice while it narrates, by the clock otherwise."""
+        """Lines revealed so far, as a float.
+
+        The voice paces the text while it narrates. If the voice stops early or drops out, the text carries on
+        from exactly where it was at a reading pace, so lines never pile in all at once.
+        """
         if self.narrator.driving(self._narr_key):
-            return self.narrator.progress(TEXT_SECONDS_PER_LINE)
-        return self.scene_time / TEXT_SECONDS_PER_LINE
+            p = self.narrator.progress(LINE_FADE_SECONDS)
+            self._reveal_seed = p
+            return p
+        if self._reveal_seed is not None:
+            self._reveal_t = max(self._reveal_t, self._time_at(lines, self._reveal_seed))
+            self._reveal_seed = None
+        return self._timed_progress(lines, self._reveal_t)
 
     # ------------------------------------------------------------------ actions
     def _continue(self) -> None:
@@ -494,7 +526,8 @@ class Application:
         lines = self._text_scene(scene)[1]
         if self._reveal(lines) < len(lines):
             self.narrator.stop()
-            self.scene_time = len(lines) * TEXT_SECONDS_PER_LINE + 0.01
+            self._reveal_seed = None
+            self._reveal_t = sum(self._line_seconds(line) for line in lines) + 1.0
             return
         self._ui_sound("ui_select")
         if scene is SceneId.PROLOGUE:
@@ -604,6 +637,8 @@ class Application:
             self._shown_scene = self.model.scene
             self._enter_scene(self.model.scene)
         self.scene_time += dt
+        if self.model.scene in TEXT_SCENES and not self.narrator.driving(self._narr_key):
+            self._reveal_t += dt
         self._update_audio(dt)
         frame = self.vision.latest()
         image = self.vision.latest_image()

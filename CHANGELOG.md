@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased - tutorial sandbox, illustrated How to Play, Codex portraits
+## Unreleased - atmosphere, story pacing, layout fixes
+
+- **Story text no longer rushes**: the voice paces the text line by line, and if it stops early or drops out the text carries on from the same line at a reading pace (longer lines get more time) instead of dumping the rest in at once. Briefings are now narrated too. Story pages shrink their text to fit.
+- **How to Play and the Sandbox keep everything inside their boxes**: text is measured and shrunk to fit, and the element reactions are laid out wider.
+- **Each place has weather and mood**: dust and balete leaves (Mount Makiling), bubbles (the river), wind streaks (Batanes), embers and ash (Taal), a crescent moon and drifting spirits (the Bakunawa), plus a tinted vignette per place.
+- **Explosions leave marks**: craters with cracks and rubble, glowing lava pools, scorch marks, and lightning scorches that fade; dust, debris and shockwave rings; screen shake and a flash for lightning; water spray along the rapids.
+- **Creatures feel alive**: ground shadows, glowing eyes that pulse and blink, eyes flaring as an attack winds up, afterimages when the Tikbalang charges, a flickering Babaeng Puti, and idle magic for the Santelmo, Duwende, Diwata, Manananggal, Kapre, Siyokoy King, Typhoon, Blaze of Taal and Bakunawa. Defeated creatures release a spirit in their own colour; guardians arrive with a shockwave.
+
+## Earlier - tutorial sandbox, illustrated How to Play, Codex portraits
 
 - **Gesture Sandbox is now a guided lesson** (`sandbox.py`): show your hand, then make Earth, Water, Air, Fire and Lightning in turn and the Kalampag with two palms, then free practice. Each step shows a drawn hand-sign, a hold ring that fills as you keep it steady, live feedback ("I see Air. Spread your fingers wider"), tips, and a clickable step tracker. The storyteller coaches each step aloud. Enter skips, Left/Right changes step, R restarts.
 - **How to Play is an illustrated lesson**: Lola Auring introduces each page, the rules sit beside an animated picture (hand-signs, element reactions, a Tikbalang charge being interrupted, pick-ups, the Kalampag against the Bakunawa, the four place hazards), and she reads each page aloud.

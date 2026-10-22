@@ -481,22 +481,32 @@ class ScreenDrawing:
         self._panel(ui, right, 228)
         self._text(ui, heading, 36, (left.x + 34, left.y + 26), GOLD, bold=True)
         art.draw_sun(ui, left.right - 52, left.y + 50, 20, GOLD, False, t * 0.3)
+        inner_w = left.w - 70
+        room = left.bottom - 22 - (left.y + 90)                        # vertical space for the quote and the rules
+        qsize, size = 23, 21
+        while True:                                                      # shrink until both blocks fit the box
+            q_rows = self._wrap(quote, qsize, inner_w)
+            rule_rows = [self._wrap(line, size, left.w - 104) for line in lines]
+            need = 24 + len(q_rows) * int(qsize * 1.35) + 32 + sum(len(r) * int(size * 1.34) + int(size * 0.5) for r in rule_rows)
+            if need <= room or size <= 14:
+                break
+            size -= 1
+            qsize = max(17, qsize - 1) if size < 19 else qsize
         y = left.y + 90
         self._text(ui, "Lola Auring says", 17, (left.x + 34, y), (240, 170, 96))
         y += 24
-        for wrapped in self._wrap(quote, 23, left.w - 70):
-            self._text(ui, wrapped, 23, (left.x + 34, y), (255, 226, 170))
-            y += 31
+        for wrapped in q_rows:
+            self._text(ui, wrapped, qsize, (left.x + 34, y), (255, 226, 170))
+            y += int(qsize * 1.35)
         y += 14
         pygame.draw.line(ui, (90, 74, 52), (left.x + 34, y), (left.right - 34, y), 2)
         y += 18
-        for line in lines:
-            wrapped = self._wrap(line, 21, left.w - 104)
-            pygame.draw.polygon(ui, GOLD, [(left.x + 42, y + 13), (left.x + 50, y + 5), (left.x + 58, y + 13), (left.x + 50, y + 21)])
-            for w in wrapped:
-                self._text(ui, w, 21, (left.x + 74, y), INK)
-                y += 28
-            y += 10
+        for rows in rule_rows:
+            pygame.draw.polygon(ui, GOLD, [(left.x + 42, y + size // 2 + 2), (left.x + 50, y + size // 2 - 6), (left.x + 58, y + size // 2 + 2), (left.x + 50, y + size // 2 + 10)])
+            for w in rows:
+                self._text(ui, w, size, (left.x + 74, y), INK)
+                y += int(size * 1.34)
+            y += int(size * 0.5)
         picture = howto_art.PAGES[page % len(howto_art.PAGES)]
         picture(self, ui, pygame.Rect(right.x + 12, right.y + 16, right.w - 24, right.h - 32), t)
         for i in range(pages):
@@ -518,15 +528,21 @@ class ScreenDrawing:
         full.blit(veil, (0, 0))
         self._draw_embers(full)
         self._text(ui, title, 46, (self.width // 2, 110), GOLD, True, outline=True, bold=True)
+        size = 26                                                       # shrink the text until every line fits the page
+        for size in (26, 24, 22, 20, 18, 16):
+            lh, gap = int(size * 1.38), int(size * 0.7)
+            if 190 + sum(len(self._wrap(line, size, 940)) * lh + gap for line in lines) <= 650:
+                break
+        lh, gap = int(size * 1.38), int(size * 0.7)
         y = 190
         for i, line in enumerate(lines):
             fade = max(0.0, min(1.0, revealed - i))
-            rows = self._wrap(line, 26, 940)
+            rows = self._wrap(line, size, 940)
             for wrapped in rows:
                 if fade > 0:
-                    self._text(ui, wrapped, 26, (self.width // 2, y), scale_color(INK, 0.15 + 0.85 * fade), True, outline=True)
-                y += 36
-            y += 18
+                    self._text(ui, wrapped, size, (self.width // 2, y), scale_color(INK, 0.15 + 0.85 * fade), True, outline=True)
+                y += lh
+            y += gap
         done = revealed >= len(lines)
         if done:
             pulse = 0.55 + 0.45 * math.sin(self._clock * 3.0)

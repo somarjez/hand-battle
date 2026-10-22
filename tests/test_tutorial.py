@@ -131,3 +131,64 @@ def test_codex_entries_carry_a_creature_and_render(app):  # noqa: F811
     for i in (0, 1, len(beasts) - 1):
         app.codex_index = i
         tick(app, 2)
+
+
+def test_story_text_never_dumps_when_the_voice_drops_out(app):  # noqa: F811
+    from elemental_convergence.narrator import Narrator
+
+    class Dies:
+        def speak(self, text, volume, should_stop):
+            raise RuntimeError("voice failed")
+
+    app.narrator = Narrator(lambda: Dies())
+    app._enter_scene(SceneId.PROLOGUE)
+    lines = list(story.PROLOGUE)
+    app._reveal_seed = 2.4                       # it had got to line three when the voice died
+    app.narrator.failed = True
+    first = app._reveal(lines)
+    assert 2.0 <= first < 3.0                     # carries on from there, not from the end
+    app._reveal_t += 1.0
+    assert app._reveal(lines) < len(lines)
+    app.narrator.close()
+
+
+def test_long_lines_get_more_reading_time(app):  # noqa: F811
+    assert app._line_seconds("x" * 120) > app._line_seconds("short")
+
+
+def test_atmosphere_marks_explosions_and_renders_every_place():
+    import numpy as np
+    from elemental_convergence.content import load_levels
+    from elemental_convergence.models import Difficulty
+    from elemental_convergence.presentation.battle_view import BattleView
+    from elemental_convergence.session import GameSession
+
+    levels = load_levels()
+    for level_id, kind in (("stonewake", "rockfall"), ("tidelost", "tide"), ("skyglass", "storm"),
+                           ("cinderforge", "forge"), ("eclipse", "storm")):
+        s = GameSession(levels, seed=1)
+        s.set_arena((1280, 720))
+        s.start_level(level_id, Difficulty.BALANCED)
+        s.field.hazard(kind, [(500, 500, 60)], 1.0)
+        v = BattleView(1)
+        for _ in range(30):
+            for b in s.field.bombs:
+                b.t += 0.1
+            for L in s.field.lasers:
+                L.t += 0.1
+                s.field._laser_geometry(L, {})
+            v.update(1 / 30, s.snapshot())
+            img = v.render(s.snapshot(), None, None, (1280, 720))
+        assert img.shape == (720, 1280, 3) and img.any()
+        if kind in ("rockfall", "forge", "storm"):
+            assert v.decals, level_id
+
+
+def test_defeated_creatures_release_a_spirit():
+    from elemental_convergence.presentation.battle_view import BattleView
+
+    v = BattleView(1)
+    before = len(v.sparks)
+    v._spirit(300, 300, "shooter", False)
+    v._spirit(600, 300, "rift_sovereign", True)
+    assert len(v.sparks) > before + 20 and v.pops

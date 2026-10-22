@@ -142,7 +142,9 @@ def test_renderer_draws_gameplay_over_the_whole_canvas():
     session = staged(["shooter"], size=(1280, 800))
     target = pygame.Surface((1280, 800))
     renderer.draw_gameplay(target, session.snapshot(), None, None, np.full((480, 640, 3), 90, np.uint8))
-    assert target.get_at((1279, 799))[:3] == (90, 90, 90) and target.get_at((0, 400))[:3] == (90, 90, 90)
+    # the camera fills the corners; each place's mood vignette only tints and darkens them a little
+    assert min(target.get_at((1279, 799))[:3]) > 55 and min(target.get_at((0, 400))[:3]) > 55
+    assert max(target.get_at((1279, 799))[:3]) <= 100
     pygame.quit()
 
 

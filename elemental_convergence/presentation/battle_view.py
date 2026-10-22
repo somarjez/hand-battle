@@ -19,6 +19,7 @@ import numpy as np
 
 from ..combat import kind_info
 from . import sprites
+from .atmosphere import AtmosphereMixin
 from ..combat import hand_zone_radius
 from ..models import Element, GestureFrame
 from ..session import (
@@ -119,7 +120,7 @@ def backdrop(size: tuple[int, int]) -> np.ndarray:
     return np.ascontiguousarray(np.repeat(column[:, None, :], w, axis=1))
 
 
-class BattleView:
+class BattleView(AtmosphereMixin):
     def __init__(self, seed: int | None = None):
         self.rng = random.Random(seed)
         self.reduced_flash = False
@@ -152,6 +153,7 @@ class BattleView:
         self.last_color = POWER_COLORS["fire"]
         self._advanced = False
         self._flat: dict = {}
+        self._atmo_reset()
 
     def _add(self, img, bgr):
         """Saturating add of a constant colour. A cached flat image is ~10x faster than cv2.add(img, scalar)."""
@@ -218,6 +220,7 @@ class BattleView:
             else:
                 self.burst(x, y, col, 60, 16, size=(4, 10))
                 self.burst(x, y, (255, 255, 255), 25, 12)
+            self._spirit(x, y, ev.detail, bool(data.get("boss")))
         elif kind is GameEventType.PLAYER_HIT:
             if not self.reduced_flash:
                 self.hurt = 10.0
@@ -383,6 +386,8 @@ class BattleView:
                                         "vx": 0.0, "vy": -2.4, "life": 18, "max": 18, "r": self.rng.randint(3, 5),
                                         "col": (90, 220, 90), "g": 0.0})
         self.hurt = max(0.0, self.hurt - f)
+        self._watch_hazards(snap)
+        self._tick_atmosphere(f)
         self.shake *= 0.8 ** f
         for k in self.nomana:
             self.nomana[k] = max(0.0, self.nomana[k] - f)
@@ -453,6 +458,7 @@ class BattleView:
         if p["id"] is not None:
             self.enemy_flash[p["id"]] = 3.0
         rng = self.rng
+        self.pops.append({"x": x, "y": y, "r": 8.0, "life": 10.0, "col": POWER_COLORS[kind]})
         if kind == "fire":
             self.burst(x, y, (0, 170, 255), 40, 14)
             for _ in range(12):
@@ -479,6 +485,8 @@ class BattleView:
         self._advanced = False
         playing = snap.state in (SessionState.ACTIVE, SessionState.BOSS)
 
+        self._ambient(img, glow, snap.level_id)
+        self._draw_decals(img, glow)
         if snap.loot:
             self._draw_loot(img, glow, snap)
         if snap.enemies:
@@ -496,6 +504,7 @@ class BattleView:
         if self.bolts and rng.random() < 0.12 and not self.reduced_flash:        # occasional flash
             img = self._add(img, (60, 50, 40))
         self._draw_fire(glow)
+        self._draw_pops(img, glow)
         self._draw_flyers(img, glow)
         self._draw_sparks(img, glow)
         if frame is not None and playing and self.nova <= 0:
@@ -504,6 +513,9 @@ class BattleView:
             self._draw_buff_rings(img, glow, snap, frame)
             self._draw_hold(img, glow, snap, frame)
         img = add_glow(img, glow, 10, div=8 if self.fast else 4)
+        img = self._apply_mood(img, snap.level_id)
+        if self.flash_t > 0 and not self.reduced_flash:
+            img = self._add(img, (70, 70, 80))
 
         if frame is not None and playing and self.nova <= 0:                    # element screen tints
             held = {hand.gesture for hand in frame.hands if hand.gesture in snap.unlocked_elements}
@@ -624,12 +636,24 @@ class BattleView:
             r, boss = e.radius, e.boss
             flash = self.enemy_flash.get(e.id, 0) > 0
             bob = math.sin(self.t * 0.1 + e.id * 0.9) * r * (0.03 if boss else 0.06)
+            r_eff = r * (1.0 if boss else 1.3)
             if self.sprites.has(e.kind):
-                scol, sal = self.sprites.frame(e.kind, r * (1.0 if boss else 1.3), self.t * 0.03 * (1.5 if e.enraged else 1.0) + e.id * 0.37,
-                                               e.enraged, flash)
+                self._shadow(img, x, y, r_eff, boss)
+                angry = e.enraged or (e.warn > 0 and not e.wind and (int(self.t / 4) + e.id) % 2 == 0)   # eyes flare as it winds up
+                scol, sal = self.sprites.frame(e.kind, r_eff, self.t * 0.03 * (1.5 if e.enraged else 1.0) + e.id * 0.37,
+                                               angry, flash)
                 if e.age < 0.35:                                       # pop in
                     scol, sal = sprites.scaled(scol, sal, 0.4 + 0.6 * max(0.0, e.age) / 0.35)
+                if e.kind == "blinker":                                # the White Lady flickers
+                    scol, sal = sprites.fade(scol, sal, 0.8 + 0.2 * math.sin(self.t * 0.12 + e.id))
+                if e.dashing:                                          # afterimages while it rushes
+                    for k, a in ((1, 0.35), (2, 0.2), (3, 0.1)):
+                        gcol, gal = sprites.fade(scol, sal, a)
+                        sprites.blit(img, gcol, gal, x - e.direction[0] * r * 0.55 * k, y + bob - e.direction[1] * r * 0.55 * k)
                 sprites.blit(img, scol, sal, x, y + bob)
+                if e.age >= 0.35:
+                    self._eyes(img, glow, e, x, y + bob, r_eff)
+                    self._creature_effects(img, glow, e, x, y + bob, r_eff)
             else:                                                      # unknown kind: plain disc
                 cv2.circle(img, (int(x), int(y)), int(r), (255, 255, 255) if flash else (60, 40, 120), -1, cv2.LINE_AA)
             if e.kind == "sweeper":                                    # santelmo's ghost-fire
@@ -730,6 +754,9 @@ class BattleView:
                     cv2.circle(img, c, 8, (255, 215, 130), -1, cv2.LINE_AA)
                     lead = (int(s.x + d[0] * 9), int(s.y + d[1] * 9))
                     cv2.circle(img, lead, 6, (255, 255, 255), -1, cv2.LINE_AA)           # foam on the leading edge
+                    for _ in range(2):                                                    # and spray flung off the crest
+                        cv2.circle(img, (int(s.x + self.rng.uniform(-14, 14) + d[0] * 14), int(s.y + self.rng.uniform(-14, 14) + d[1] * 14)),
+                                   self.rng.randint(1, 3), (255, 245, 225), -1)
                 else:
                     tail = (int(s.x - d[0] * 22), int(s.y - d[1] * 22))
                     cv2.line(glow, tail, c, shade_col(s.tint, 0.5), 26)

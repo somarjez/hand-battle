@@ -17,6 +17,13 @@ def _ease(x: float) -> float:
     return x * x * (3 - 2 * x)
 
 
+def fit(r, ui, text, size, pos, maxw, color, center=False, **kw):
+    """Draw text, shrinking it until it is no wider than ``maxw`` so it can never leave its box."""
+    while size > 12 and r.font(size, kw.get("bold", False)).size(text)[0] > maxw:
+        size -= 1
+    r._text(ui, text, size, pos, color, center, **kw)
+
+
 def _badge(ui, cx, cy, r, color, active=False):
     pygame.draw.circle(ui, (12, 18, 28), (int(cx), int(cy)), r)
     pygame.draw.circle(ui, color if active else tuple(int(c * 0.45) for c in color), (int(cx), int(cy)), r, 5 if active else 2)
@@ -33,7 +40,7 @@ def page_signs(r, ui, R, t):
         handsigns.draw_hand_sign(ui, name, cx, cy - 2, 92 if on else 76, on, t)
         r._text(ui, handsigns.ELEMENT_WORD[name], 21, (cx, cy + 82), col if on else DIM, True, bold=on)
     name = ELEMENTS[active]
-    r._text(ui, handsigns.ELEMENT_SIGN[name], 22, (R.centerx, R.bottom - 74), INK, True)
+    fit(r, ui, handsigns.ELEMENT_SIGN[name], 22, (R.centerx, R.bottom - 74), R.w - 30, INK, True)
     r._text(ui, f"= {name.title()}", 30, (R.centerx, R.bottom - 38), handsigns.ELEMENT_RGB[name], True, bold=True)
 
 
@@ -50,17 +57,18 @@ def page_combos(r, ui, R, t):
         box = pygame.Rect(R.x + 18, y - 44, R.w - 36, 90)
         pygame.draw.rect(ui, (16, 24, 36) if not on else (28, 36, 52), box, border_radius=14)
         pygame.draw.rect(ui, col if on else (56, 70, 86), box, 3 if on else 1, border_radius=14)
-        x = R.x + 72
-        handsigns.draw_hand_sign(ui, a, x, y - 4, 62, on, t)
+        x = R.x + 62
+        handsigns.draw_hand_sign(ui, a, x, y - 4, 60, on, t)
         if b:
-            r._text(ui, "+", 30, (x + 56, y), INK, True, bold=True)
-            handsigns.draw_hand_sign(ui, b, x + 112, y - 4, 62, on, t)
-            r._text(ui, ">", 30, (x + 170, y), INK, True, bold=True)
+            r._text(ui, "+", 28, (x + 42, y), INK, True, bold=True)
+            handsigns.draw_hand_sign(ui, b, x + 88, y - 4, 60, on, t)
+            r._text(ui, "=", 28, (x + 134, y), INK, True, bold=True)
         else:
-            r._text(ui, ">", 30, (x + 56, y), INK, True, bold=True)
-        rx = x + (230 if b else 116)
-        r._text(ui, word, 28, (rx, y - 20), col, bold=True)
-        r._text(ui, note, 17, (rx, y + 14), DIM)
+            r._text(ui, "=", 28, (x + 42, y), INK, True, bold=True)
+        rx = x + (162 if b else 76)
+        room = box.right - 64 - rx
+        fit(r, ui, word, 28, (rx, y - 20), room, col, bold=True)
+        fit(r, ui, note, 17, (rx, y + 14), room, DIM)
         if on:                                                          # the reaction goes off
             rad = int(10 + 36 * _ease(phase))
             fade = int(220 * (1 - phase))
@@ -100,8 +108,8 @@ def page_fight(r, ui, R, t):
         if hit:
             pygame.draw.circle(ui, (255, 230, 160), foe, int(40 + 60 * pop), 4)
     else:
-        r._text(ui, "It shakes, then charges: hit it now", 21, (scene.centerx, scene.y + 44), (255, 150, 140), True, outline=True)
-    r._text(ui, "Blasts cancel orbs, bombs and wind-ups", 19, (scene.centerx, scene.bottom - 22), DIM, True)
+        fit(r, ui, "It shakes, then charges: hit it now", 21, (scene.centerx, scene.y + 44), scene.w - 24, (255, 150, 140), True, outline=True)
+    fit(r, ui, "Blasts cancel orbs, bombs and wind-ups", 19, (scene.centerx, scene.bottom - 22), scene.w - 24, DIM, True)
 
 
 def page_pickups(r, ui, R, t):
@@ -111,8 +119,8 @@ def page_pickups(r, ui, R, t):
     for (kind, name, note), (cx, cy) in zip(items, spots):
         handsigns.draw_pickup(ui, kind, cx, cy, 78, t + len(name))
         r._text(ui, name, 24, (cx, cy + 62), INK, True, bold=True)
-        r._text(ui, note, 17, (cx, cy + 88), DIM, True)
-    r._text(ui, "Touch them with your hand before they fade", 19, (R.centerx, R.bottom - 30), (255, 214, 120), True)
+        fit(r, ui, note, 17, (cx, cy + 88), 150, DIM, True)
+    fit(r, ui, "Touch them with your hand before they fade", 19, (R.centerx, R.bottom - 30), R.w - 24, (255, 214, 120), True)
 
 
 def page_kalampag(r, ui, R, t):
@@ -129,7 +137,7 @@ def page_kalampag(r, ui, R, t):
             ang = a * math.tau / 16
             pygame.draw.line(ui, (255, 226, 150), (cx + math.cos(ang) * (60 + 80 * k), R.y + 110 + math.sin(ang) * (60 + 80 * k)),
                              (cx + math.cos(ang) * (110 + 120 * k), R.y + 110 + math.sin(ang) * (110 + 120 * k)), 4)
-        r._text(ui, "KALAMPAG!", 54, (cx, R.y + 250), (255, 232, 160), True, outline=True, bold=True)
+        fit(r, ui, "KALAMPAG!", 54, (cx, R.y + 250), R.w - 30, (255, 232, 160), True, outline=True, bold=True)
     else:
         together = _ease((cycle - 0.45) / 0.3) if cycle > 0.45 else 0.0
         gap = 150 - 105 * together
@@ -138,7 +146,7 @@ def page_kalampag(r, ui, R, t):
         if together > 0.9:
             hold = (cycle - 0.75) / 0.05
             pygame.draw.arc(ui, (255, 214, 120), pygame.Rect(cx - 70, R.y + 220, 140, 140), math.pi / 2 - max(0, min(1, hold)) * math.tau, math.pi / 2, 6)
-    r._text(ui, "10 kills fill the meter, a guardian counts as 5", 18, (cx, R.bottom - 74), DIM, True)
+    fit(r, ui, "10 kills fill the meter, a guardian counts as 5", 18, (cx, R.bottom - 74), R.w - 24, DIM, True)
     for i in range(10):
         seg = pygame.Rect(R.x + 40 + i * 44, R.bottom - 50, 38, 20)
         pygame.draw.rect(ui, (255, 190, 70) if i < fill else (30, 40, 54), seg, border_radius=5)
@@ -152,13 +160,13 @@ def page_places(r, ui, R, t):
         pygame.draw.rect(ui, (16, 24, 36), box, border_radius=14)
         pygame.draw.rect(ui, (70, 86, 104), box, 2, border_radius=14)
         handsigns.draw_hazard(ui, kind, box.centerx, box.y + 56, 78, t)
-        r._text(ui, name, 22, (box.centerx, box.bottom - 38), INK, True, bold=True)
-        r._text(ui, place, 16, (box.centerx, box.bottom - 16), DIM, True)
+        fit(r, ui, name, 22, (box.centerx, box.bottom - 38), box.w - 14, INK, True, bold=True)
+        fit(r, ui, place, 16, (box.centerx, box.bottom - 16), box.w - 14, DIM, True)
     lit = int(t * 0.9) % 4
     for i, label in enumerate(("Clear it", "No life lost", "5 hits or fewer")):
         cx = R.x + 82 + i * 178
         r._star(ui, cx, R.bottom - 74, 24, i < lit)
-        r._text(ui, label, 17, (cx, R.bottom - 36), INK if i < lit else DIM, True)
+        fit(r, ui, label, 17, (cx, R.bottom - 36), 160, INK if i < lit else DIM, True)
 
 
 PAGES = (page_signs, page_combos, page_fight, page_pickups, page_kalampag, page_places)
