@@ -169,6 +169,10 @@ class BattleView(AtmosphereMixin):
     def banner(self, text: str, frames: float, col=(60, 60, 255)) -> None:
         self.banner_text, self.banner_t, self.banner_col = text, frames, col
 
+    @property
+    def banners(self) -> list[str]:
+        return [self.banner_text] if self.banner_text else []
+
     def burst(self, x, y, col, n=20, speed=10, life=(15, 30), size=(3, 8), gravity=0.0) -> None:
         rng = self.rng
         for _ in range(n):
@@ -243,6 +247,7 @@ class BattleView(AtmosphereMixin):
             self.nova_center = (data.get("x", 0.0), data.get("y", 0.0))
             self.nova_targets = []
             self.rings = [{"x": int(self.nova_center[0]), "y": int(self.nova_center[1]), "r": 30.0}]
+            self.floater(self.nova_center[0], self.nova_center[1], "KALAMPAG!", (80, 230, 255))
             self.kick(1.0)
             self.banner("KALAMPAG!", 100, (80, 230, 255))
             kinds = AVATAR_ELEMENTS                      # 360-degree elemental nova
