@@ -11,17 +11,23 @@ from .models import Difficulty
 
 @dataclass(frozen=True, slots=True)
 class SaveData:
-    version: int = 1
+    version: int = 2
     unlocked_levels: tuple[str, ...] = ("stonewake",)
     completed_levels: tuple[str, ...] = ()
     best_scores: dict[str, int] = field(default_factory=dict)
     difficulty: Difficulty = Difficulty.BALANCED
+    best_stars: dict[str, int] = field(default_factory=dict)       # 1-3 per level
+    seen_enemies: tuple[str, ...] = ()                              # unlocks bestiary entries
+    prologue_seen: bool = False
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "SaveData":
-        if raw.get("version") != 1:
+        if raw.get("version") not in (1, 2):                      # v1 saves load fine: new fields default
             raise ValueError("unsupported save version")
         return cls(
+            best_stars={str(k): max(0, min(3, int(v))) for k, v in raw.get("best_stars", {}).items()},
+            seen_enemies=tuple(str(x) for x in raw.get("seen_enemies", ())),
+            prologue_seen=bool(raw.get("prologue_seen", False)),
             unlocked_levels=tuple(str(x) for x in raw.get("unlocked_levels", ("stonewake",))),
             completed_levels=tuple(str(x) for x in raw.get("completed_levels", ())),
             best_scores={str(k): int(v) for k, v in raw.get("best_scores", {}).items()},
@@ -41,6 +47,8 @@ class Settings:
     master_volume: float = 0.8
     music_volume: float = 0.6
     sfx_volume: float = 0.8
+    graphics: str = "auto"            # auto | high | fast
+    narrator: bool = True             # read the story scenes aloud when a voice is available
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "Settings":
@@ -48,6 +56,8 @@ class Settings:
             raise ValueError("unsupported settings version")
         values = {name: raw.get(name, field.default) for name, field in cls.__dataclass_fields__.items()}
         values["version"] = 1
+        if values["graphics"] not in ("auto", "high", "fast"):
+            values["graphics"] = "auto"
         return cls(**values)
 
 

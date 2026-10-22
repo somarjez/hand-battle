@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -16,6 +16,7 @@ class ContentError(ValueError):
 class Objective(StrEnum):
     DEFEAT_ALL = "defeat_all"
     SURVIVE = "survive"
+    HUNT = "hunt"
     BOSS = "boss"
 
 
@@ -24,6 +25,19 @@ class WaveDefinition:
     objective: Objective
     enemies: dict[str, int]
     duration_seconds: float | None = None
+    quota: int | None = None                  # hunt waves: how many enemies to defeat
+    elite: tuple[str, ...] = ()               # extra, tougher enemies that arrive with the wave
+
+
+HAZARD_KINDS = ("rockfall", "tide", "storm", "forge", "eclipse")
+
+
+@dataclass(frozen=True, slots=True)
+class HazardDefinition:
+    kind: str
+    label: str
+    first: float = 9.0                        # seconds into the level before the first one
+    interval: float = 12.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +50,13 @@ class LevelDefinition:
     waves: tuple[WaveDefinition, ...]
     boss: str | None
     next_level: str | None
+    subtitle: str = ""
+    keeper: str = ""
+    wave_titles: tuple[str, ...] = ()
+    boss_name: str = ""
+    boss_lines: dict[str, str] = field(default_factory=dict)
+    lore: tuple[str, ...] = ()
+    hazard: HazardDefinition | None = None
 
 
 DEFAULT_LEVELS_PATH = Path(__file__).with_name("data") / "levels.json"
@@ -52,7 +73,22 @@ def _wave(raw: dict[str, Any], level_id: str) -> WaveDefinition:
     duration = raw.get("duration_seconds")
     if objective is Objective.SURVIVE and (not isinstance(duration, (int, float)) or duration <= 0):
         raise ContentError(f"level {level_id}: survive objective needs duration_seconds")
-    return WaveDefinition(objective, dict(enemies), float(duration) if duration is not None else None)
+    quota = raw.get("quota")
+    if objective is Objective.HUNT and (not isinstance(quota, int) or quota <= 0):
+        raise ContentError(f"level {level_id}: hunt objective needs a positive quota")
+    elite = tuple(str(kind) for kind in raw.get("elite", ()))
+    return WaveDefinition(objective, dict(enemies), float(duration) if duration is not None else None,
+                          quota if objective is Objective.HUNT else None, elite)
+
+
+def _hazard(raw: dict[str, Any] | None, level_id: str) -> HazardDefinition | None:
+    if not raw:
+        return None
+    kind = str(raw.get("kind", ""))
+    if kind not in HAZARD_KINDS:
+        raise ContentError(f"level {level_id}: unknown hazard {kind!r}")
+    return HazardDefinition(kind, str(raw.get("label", kind.upper())), float(raw.get("first", 9.0)),
+                            float(raw.get("interval", 12.0)))
 
 
 def load_levels(path: Path | None = None) -> dict[str, LevelDefinition]:
@@ -79,6 +115,13 @@ def load_levels(path: Path | None = None) -> dict[str, LevelDefinition]:
                 waves=waves,
                 boss=str(raw["boss"]) if raw.get("boss") else None,
                 next_level=str(raw["next_level"]) if raw.get("next_level") else None,
+                subtitle=str(raw.get("subtitle", "")),
+                keeper=str(raw.get("keeper", "")),
+                wave_titles=tuple(str(x) for x in raw.get("wave_titles", ())),
+                boss_name=str(raw.get("boss_name", "")),
+                boss_lines={str(k): str(v) for k, v in raw.get("boss_lines", {}).items()},
+                lore=tuple(str(x) for x in raw.get("lore", ())),
+                hazard=_hazard(raw.get("hazard"), level_id),
             )
         except (KeyError, TypeError, ValueError) as exc:
             if isinstance(exc, ContentError):

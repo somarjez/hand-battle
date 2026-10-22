@@ -11,7 +11,7 @@ a = Analysis(
         (str(root / "elemental_convergence" / "data" / "levels.json"), "elemental_convergence/data"),
         (str(root / "elemental_convergence" / "assets"), "elemental_convergence/assets"),
     ],
-    hiddenimports=["cvzone.HandTrackingModule", "mediapipe", "pygame"],
+    hiddenimports=["cvzone.HandTrackingModule", "mediapipe", "pygame", "pyttsx3", "pyttsx3.drivers", "pyttsx3.drivers.sapi5", "comtypes"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
